@@ -1,0 +1,2 @@
+ArduinoとLoraの間の通信で参考にしたファイル。
+URL:https://github.com/AmbientDataInc/LoRa-rssi-measure/blob/master/ESP_GPS_LoRa/ESP_GPS_LoRa.ino

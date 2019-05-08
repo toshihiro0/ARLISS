@@ -1,0 +1,3 @@
+PixhawkのGPSデータをArduinoへ吸い出すサンプルファイルです。
+PixhawkのTELEM2のTX、RXを使います。
+PixhawkにGPSを接続して利用してください。
