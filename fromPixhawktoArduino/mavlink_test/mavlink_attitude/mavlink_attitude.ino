@@ -3,6 +3,7 @@
  
 #define RXpin 10
 #define TXpin 11
+#define M_PI 3.14159
 SoftwareSerial Serial1(RXpin, TXpin); // sets up serial communication on pins 3 and 2
  
 void setup() {
@@ -21,7 +22,7 @@ MavLink_receive();
  
 //function called by arduino to read any MAVlink messages sent by serial communication from flight controller to arduino
 void MavLink_receive()
-  { 
+{ 
   mavlink_message_t msg;
   mavlink_status_t status;
  
@@ -37,21 +38,16 @@ void MavLink_receive()
       switch(msg.msgid)
       {
  
-        case MAVLINK_MSG_ID_GPS_RAW_INT:
+        case MAVLINK_MSG_ID_ATTITUDE:
       {
-        mavlink_gps_raw_int_t packet;
-        mavlink_msg_gps_raw_int_decode(&msg, &packet);
+        mavlink_attitude_t packet;
+        mavlink_msg_attitude_decode(&msg, &packet);
         Serial.print("msg.msgid: ");Serial.println(msg.msgid);
-        Serial.print("MAVLINK_MSG_ID_GPS_RAW_INT: ");Serial.println(MAVLINK_MSG_ID_GPS_RAW_INT);
-        Serial.print("\nGPS Fix: ");Serial.println(packet.fix_type);
-        Serial.print("GPS Latitude: ");Serial.println(packet.lat);
-        Serial.print("GPS Longitude: ");Serial.println(packet.lon);
-        Serial.print("GPS Speed: ");Serial.println(packet.vel);
-        Serial.print("Sats Visible: ");Serial.println(packet.satellites_visible);
-       
-      }
-      break;
- 
+        Serial.print("MAVLINK_MSG_ID_ATTITUDE: ");Serial.println(MAVLINK_MSG_ID_ATTITUDE);
+        Serial.print("roll: ");Serial.println(packet.roll/M_PI*180.0);
+        Serial.print("pitch: ");Serial.println(packet.pitch/M_PI*180.0);
+        Serial.print("yaw: ");Serial.println(packet.yaw/M_PI*180.0);
+      }break;
       }
     }
   }
@@ -64,7 +60,7 @@ void request_datastream() {
   uint8_t _target_system = 1; // Id # of Pixhawk (should be 1)
   uint8_t _target_component = 0; // Target component, 0 = all (seems to work with 0 or 1
   uint8_t _req_stream_id = MAV_DATA_STREAM_ALL;
-  uint16_t _req_message_rate = 0x01; //number of times per second to request the data in hex
+  uint16_t _req_message_rate = 0x03; //number of times per second to request the data in hex
   uint8_t _start_stop = 1; //1 = start, 0 = stop
  
 // STREAMS that can be requested
