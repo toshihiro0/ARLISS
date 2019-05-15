@@ -8,7 +8,6 @@ int analogpin = 7;
 
 void loop()
 {
-    Serial.print(analogRead(analogpin));
-    Serial.print("\n");
+    Serial.println(analogRead(analogpin));
     delay(20);
 }
