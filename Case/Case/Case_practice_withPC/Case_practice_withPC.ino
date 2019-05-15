@@ -7,7 +7,7 @@
 static const int nichrome_pin_1 = 4; //ニクロム線1つめ
 static const int nichrome_pin_2 = 5; //ニクロム線2つめ
 static const int SPI_CS_PIN = 10; //気圧センサ
-//static const int LoRa_sw = 7; //LoRaの電源ピン
+//static const int LoRa_sw = 7; //LoRaの電源ピン、回路では実装されていない
 //static const int LoRa_rst = 6; //LoRaのRstピン、リセットのために作ってはあるけど、これ使うのか?
 
 static const float airpressure_on_the_ground = 101540.265; //高度計算用の地上の気圧(Pa)
