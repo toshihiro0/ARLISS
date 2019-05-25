@@ -3,7 +3,6 @@ SoftwareSerial LoRa_ss(2,3);
 
 void setup()
 {
-   pinMode(4,OUTPUT);
    Serial.begin(57600);
    LoRa_ss.begin(19200);
 }
