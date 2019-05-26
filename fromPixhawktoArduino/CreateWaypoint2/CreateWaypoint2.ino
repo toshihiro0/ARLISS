@@ -5,38 +5,44 @@
 //#define TXpin 1
 SoftwareSerial Serial1(10, 11); // sets up serial communication on pins 3 and 2
  
-void setup() {
-  Serial1.begin(57600); //RXTX from Pixhawk (Port 19,18 Arduino Mega)
-  Serial.begin(57600); //Main serial port to read the port
- 
-  mission_count();
-  
+void setup()
+{
+  	Serial1.begin(57600); //RXTX from Pixhawk (Port 19,18 Arduino Mega)
+  	Serial.begin(57600); //Main serial port to read the port
+	  //mission_count();
 }
+
+int i = 0;
  
-void loop() {
- 
- MavLink_receive();
- MavLink_receive2();
- 
+void loop()
+{
+ 	mission_count(); //mission_countはsetupにいれなくても大丈夫
+ 	//MavLink_receive();
+   for(i = 0;i < 5;++i){
+    	MavLink_receive();
+    	delay(10);
+   	}
+  	mission_count2();
+  	for(i = 0;i < 5;++i){ //これを入れないと完璧にWaypointが導入されない。
+		MavLink_receive2();
+		delay(10);
+  	}
+   while(true){}
 }
  
 //function called by arduino to read any MAVlink messages sent by serial communication from flight controller to arduino
 void MavLink_receive()
-  { 
-  mavlink_message_t msg;
-  mavlink_status_t status;
+{ 
+  	mavlink_message_t msg;
+  	mavlink_status_t status;
  
-  while(Serial1.available())
-  {
-    uint8_t c= Serial1.read();
+  	while(Serial1.available()){
+    	uint8_t c= Serial1.read();
  
-    //Get new message
-    if(mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status))
-    {
- 
-    //Handle new message from autopilot
-      switch(msg.msgid)
-      {
+    	//Get new message
+    	if(mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)){
+ 		//Handle new message from autopilot
+      	switch(msg.msgid){
       
       // Step 2 uploading a new waypoint - Check for mission replies
       case MAVLINK_MSG_ID_MISSION_REQUEST:
@@ -126,11 +132,10 @@ void MavLink_receive2()
         create_waypoint3();
         Serial.print("Sent Waypoint: \n");
         }
-
-        if (missionreq.seq == 2) {
+		/*if (missionreq.seq == 2) {
         create_waypoint4();
         Serial.print("Sent Waypoint: \n");
-        }
+        }*/
       }
       break;
  
@@ -181,7 +186,30 @@ void mission_count() {
   
   // Send the message (.write sends as bytes)
   Serial1.write(buf, len);
+}
+
+void mission_count2() {
+  //Step #1 of uploading a new waypoint
+  uint8_t _system_id = 255; // system id of sending station. 255 is Ground control software
+  uint8_t _component_id = 2; // component id of sending station 2 works fine
+  uint8_t _target_system = 1; // Pixhawk id
+  uint8_t _target_component = 0; // Pixhawk component id, 0 = all (seems to work fine)
+ 
+  uint16_t count = 2; // How many items to upload (HOME coordinates are always the first way-point)
+ 
+  // Initialize the required buffers
+  mavlink_message_t msg;
+  uint8_t buf[MAVLINK_MAX_PACKET_LEN];
+ 
+  // Pack the message
+  mavlink_msg_mission_count_pack(_system_id, _component_id, &msg, _target_system, _target_component, count);
+  //uint8_t system_id, uint8_t component_id, mavlink_message_t* msg, uint8_t target_system, uint8_t target_component, uint16_t count
+ 
+  // Copy the message to the send buffer
+  uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
   
+  // Send the message (.write sends as bytes)
+  Serial1.write(buf, len);
 }
  
 void create_home() {
