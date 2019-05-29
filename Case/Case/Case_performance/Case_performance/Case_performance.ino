@@ -21,6 +21,7 @@ TinyGPSPlus gps; //GPS
 void cds(void); //cdsセンサーの明暗判定
 float heightjudge(void); //気圧センサの高度判定
 void nichromecut(void); //ケーシング展開
+void senttoLora(float);
 void gps_transmission(void); //GPS情報の送信
 
 void setup()
@@ -39,24 +40,21 @@ void setup()
 
     GPS_UART.begin(9600); //GPSとの通信
 
-    Serial.begin(57600); //PCとの通信
+    Serial.begin(115200); //Loraとの通信
 }
 
 void loop()
 {
-    Serial.println("The program has started.");
-    delay(3000);
-    Serial.println("The process has started.");
+    float height; //高度判定
+    Serial.print("The program has started.\r");
+    delay(5000);
+    Serial.print("The process has started.\r");
     cds(); //明暗の判定
     //digitalWrite(LoRa_sw,HIGH); //ロケットから放出されたので、通信を開始してOK
     //Serial.begin(19200); //通信開始には多少待つ必要があるみたいだけど...
-    Serial.println("Case has released.");
-    float height = heightjudge(); //高度判定
-    Serial.println("The pointed height has arrived.");
-    Serial.print("Height: ");
-    Serial.println(height);
+    height = heightjudge(); //高度判定
     nichromecut(); //ニクロム線カット
-    Serial.println("The aircraft has released.");
+    senttoLora(height);
     gps_transmission(); //LoRaからGPS情報送信、ずっとこの中
 }
 
@@ -90,6 +88,12 @@ float heightjudge()
     static const float temperature_correction = 273.15; //℃↔Kの変換
     float pressure;
     float height;
+    int i;
+    for(i = 0;i < 5;++i){ //値の取り始めは値がおかしい。
+        air_pressure_sensor.readTempC(); //よくわからないがこれを無くすと気圧の値がおかしくなる?????。
+        pressure = air_pressure_sensor.readFloatPressure();
+        delay(100);
+    }
     while(true){
         air_pressure_sensor.readTempC(); //よくわからないがこれを無くすと気圧の値がおかしくなる?????。
         pressure = air_pressure_sensor.readFloatPressure();
@@ -116,6 +120,23 @@ void nichromecut()
     return;
 }
 
+void senttoLora(float height)
+{
+    Serial.print("Case has released.\r");
+    delay(500);
+    Serial.print("The pointed height has arrived.\r");
+    delay(500);
+    Serial.print("Height: ");
+    delay(500);
+    Serial.print(height);
+    delay(500);
+    Serial.print("\r");
+    delay(500);
+    Serial.print("The aircraft has released.\r");
+    delay(500);
+    return;
+}
+
 void gps_transmission()
 {
     while(true){
@@ -123,9 +144,9 @@ void gps_transmission()
             char c = GPS_UART.read();
             gps.encode(c);
             if(gps.location.isUpdated()){
-                Serial.print("LAT="); Serial.println(gps.location.lat(), 6);
-                Serial.print("LONG="); Serial.println(gps.location.lng(), 6);
-                Serial.print("ALT="); Serial.println(gps.altitude.meters());
+                Serial.print("LAT=");delay(100);Serial.print(gps.location.lat(), 6);delay(100);Serial.print("\r");delay(500);
+                Serial.print("LONG=");delay(100);Serial.print(gps.location.lng(), 6);delay(100);Serial.print("\r");delay(500);
+                Serial.print("ALT=");delay(100);Serial.println(gps.altitude.meters());delay(100);Serial.print("\r");delay(500);
             }
         }
     }
