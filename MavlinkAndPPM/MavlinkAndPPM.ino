@@ -1,25 +1,37 @@
-/*******************************
- * MAVLinkでピッチ角の絶対値が45度に入ったらフライトモードを変更する
- * 動作が遅いので修正の必要あり
- ******************************/
+/******************************************************************
+    MAVLinkAndPPM.ino
+
+    MAVLinkでピッチ角を取得して、絶対値が45度以内ならフライトモードを変更する.
+
+    The circuit:
+    *MAVLink:D10,D11
+    *PPM:D13
+
+    Created 2019/6/3
+    By Toshihiro Suzuki
+
+    https://github.com/toshihiro0/ARLISS
+
+******************************************************************/
 
 #include <mavlink.h>
 #include <SoftwareSerial.h>
 
-#define RXpin 10
-#define TXpin 11
 #define outpin 13
 
 #define M_PI 3.14159
+int plane_condition;
 
-int FLAG=0x0001;
-#define FLAG_CUTOFF 0x0001
-#define FLAG_TAKEOFF 0x0002
+#define SLEEP 0
+#define MANUAL 1
+#define STABILIZE_NOSEUP 2
+#define STABILIZE 3
+#define GUIDED 4
 
-SoftwareSerial Serial1(RXpin, TXpin); // sets up serial communication on pins 3 and 2
+SoftwareSerial SerialMavlink(10, 11); // sets up serial communication on pins 3 and 2
 
 void setup() {
-  Serial1.begin(57600); //RXTX from Pixhawk (Port 19,18 Arduino Mega)
+  SerialMavlink.begin(57600); //RXTX from Pixhawk (Port 19,18 Arduino Mega)
   Serial.begin(57600); //Main serial port for console output
   pinMode(outpin,OUTPUT);
 
@@ -29,29 +41,34 @@ request_datastream();
 
 void loop() {
   int ch[8];
-  int flightmode1[8]={0,0,0,0,165,0,0,0};
-  int flightmode2[8]={0,0,0,0,425,0,0,0};
-  int flightmode3[8]={0,0,0,0,815,0,0,0};
+  int PPMMODE_MANUAL[8]={0,0,0,0,165,0,0,0};
+  int PPMMODE_STABILIZE[8]={0,0,0,0,425,0,0,0};
+  int PPMMODE_GUIDED[8]={0,0,0,0,815,0,0,0};
+  
 
   float pitch_angle;
   
-  switch (FLAG) {
-    case 0x0001://カットオフ後
-    pitch_angle=MavLink_receive();
-    Serial.println(pitch_angle);//デバッグ用
-    for(int i=0;i<8;i++){
-      ch[i]=flightmode2[i];
-    }
-    if(-45<pitch_angle&&pitch_angle<45){
-      FLAG|=FLAG_TAKEOFF;
-    }
-    break;
+  switch (plane_condition) {
+    case STABILIZE://カットオフ後
+      pitch_angle=MavLink_receive();
+      Serial.println(pitch_angle);//デバッグ用
+      for(int i=0;i<8;i++){
+        ch[i]=PPMMODE_STABILIZE[i];
+      }
+      if(-45<pitch_angle&&pitch_angle<45){
+        plane_condition=GUIDED;
+      }
+      break;
 
-    case 0x0003://離陸判定後
-    for(int i=0;i<8;i++){
-      ch[i]=flightmode3[i];
-    }
-    break;
+    case GUIDED://離陸判定後
+      for(int i=0;i<8;i++){
+        ch[i]=PPMMODE_GUIDED[i];
+      }
+      break;
+
+    default:
+      plane_condition=STABILIZE;
+      break;
 
   }
 
@@ -65,9 +82,9 @@ float MavLink_receive()
   mavlink_message_t msg;
   mavlink_status_t status;
 
-  while(Serial1.available())
+  while(SerialMavlink.available())
   {
-    uint8_t c= Serial1.read();
+    uint8_t c= SerialMavlink.read();
 
     //Get new message
     if(mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status))
@@ -127,7 +144,7 @@ void request_datastream() {
   mavlink_msg_request_data_stream_pack(_system_id, _component_id, &msg, _target_system, _target_component, _req_stream_id, _req_message_rate, _start_stop);
   uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);  // Send the message (.write sends as bytes)
 
-  Serial1.write(buf, len); //Write data to serial port
+  SerialMavlink.write(buf, len); //Write data to serial port
 }
 
 void OnePulth(int PPMtime){
