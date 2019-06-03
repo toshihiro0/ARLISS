@@ -3,18 +3,24 @@
 #include <TinyGPS++.h>
 
 //#defineとstatic const のどちらが良いか僕にはわからない。以下ピン設定
+//#defineのがメモリを食わないので、#defineにしておきます
 
-static const int nichrome_pin_1 = 4; //ニクロム線1つめ
-static const int nichrome_pin_2 = 5; //ニクロム線2つめ
-static const int SPI_CS_PIN = 10; //気圧センサ
-//static const int LoRa_sw = 7; //LoRaの電源ピン、回路では実装されていない
-//static const int LoRa_rst = 6; //LoRaのRstピン、リセットのために作ってはあるけど、これ使うのか?
+//Cdsセル、0mでの気圧、気温確認！！
+//43行目確認,69行目確認！！
+
+#define nichrome_pin_1 4 //ニクロム線1つめ
+#define nichrome_pin_2 5 //ニクロム線2つめ
+#define SPI_CS_PIN 10 //気圧センサ
+
+#define LoRa_sw 6 //LoRaの電源ピン
+#define LoRa_rst 7 //LoRaのRstピン
 
 static const float airpressure_on_the_ground = 101540.265; //高度計算用の地上の気圧(Pa)
 static const float temperature_on_the_ground = 23.82; //高度計算用の地上の気温(℃)
 static const float release_height = 2000; //切り離し高度(m)
 
 SoftwareSerial GPS_UART(2,3); //RX,TX,GPS通信用
+SoftwareSerial LoRa(8,9); //RX,TX,LoRa通信用
 BME280 air_pressure_sensor; //気圧センサBME280
 TinyGPSPlus gps; //GPS
 
@@ -23,6 +29,7 @@ float heightjudge(void); //気圧センサの高度判定
 void nichromecut(void); //ケーシング展開
 void senttoLora(float);
 void gps_transmission(void); //GPS情報の送信
+void LoRa_reset(void);
 
 void setup()
 {
@@ -35,20 +42,22 @@ void setup()
     pinMode(nichrome_pin_2,OUTPUT);
     digitalWrite(nichrome_pin_2,LOW);
 
-    //pinMode(LoRa_sw,OUTPUT); //LoRaの通信
-    //digitalWrite(LoRa_sw,LOW);
+    pinMode(LoRa_sw,OUTPUT); //LoRaの通信
+    digitalWrite(LoRa_sw,HIGH); //ここを変えること！！！
+    pinMode(LoRa_rst,OUTPUT);
+    digitalWrite(LoRa_rst,HIGH);
 
     GPS_UART.begin(9600); //GPSとの通信
 
-    Serial.begin(115200); //Loraとの通信
+    LoRa.begin(115200); //Loraとの通信
 }
 
 void loop()
 {
     float height; //高度判定
-    Serial.print("The program has started.\r");
+    LoRa.print("The program has started.\r");
     delay(5000);
-    Serial.print("The process has started.\r");
+    LoRa.print("The process has started.\r");
     cds(); //明暗の判定
     //digitalWrite(LoRa_sw,HIGH); //ロケットから放出されたので、通信を開始してOK
     //Serial.begin(19200); //通信開始には多少待つ必要があるみたいだけど...
@@ -122,17 +131,17 @@ void nichromecut()
 
 void senttoLora(float height)
 {
-    Serial.print("Case has released.\r");
+    LoRa.print("Case has released.\r");
     delay(500);
-    Serial.print("The pointed height has arrived.\r");
+    LoRa.print("The pointed height has arrived.\r");
     delay(500);
-    Serial.print("Height: ");
+    LoRa.print("Height: ");
     delay(500);
-    Serial.print(height);
+    LoRa.print(height);
     delay(500);
-    Serial.print("\r");
+    LoRa.print("\r");
     delay(500);
-    Serial.print("The aircraft has released.\r");
+    LoRa.print("The aircraft has released.\r");
     delay(500);
     return;
 }
@@ -144,10 +153,17 @@ void gps_transmission()
             char c = GPS_UART.read();
             gps.encode(c);
             if(gps.location.isUpdated()){
-                Serial.print("LAT=");delay(100);Serial.print(gps.location.lat(), 6);delay(100);Serial.print("\r");delay(500);
-                Serial.print("LONG=");delay(100);Serial.print(gps.location.lng(), 6);delay(100);Serial.print("\r");delay(500);
-                Serial.print("ALT=");delay(100);Serial.println(gps.altitude.meters());delay(100);Serial.print("\r");delay(500);
+                LoRa.print("LAT=");delay(100);LoRa.print(gps.location.lat(), 6);delay(100);LoRa.print("\r");delay(500);
+                LoRa.print("LONG=");delay(100);LoRa.print(gps.location.lng(), 6);delay(100);LoRa.print("\r");delay(500);
+                LoRa.print("ALT=");delay(100);LoRa.println(gps.altitude.meters());delay(100);LoRa.print("\r");delay(500);
             }
         }
     }
+}
+
+void LoRa_reset()
+{
+    digitalWrite(LoRa_rst,LOW);
+    delay(1); //1msで十分
+    digitalWrite(LoRa_rst,HIGH);
 }
