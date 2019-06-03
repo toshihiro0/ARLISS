@@ -2,6 +2,7 @@
     MAVLinkAndPPM.ino
 
     MAVLinkでピッチ角を取得して、絶対値が45度以内ならフライトモードを変更する.
+    関数名などの変更をしているので注意.  
 
     The circuit:
     *MAVLink:D10,D11
@@ -20,8 +21,8 @@
 #define outpin 13
 
 #define M_PI 3.14159
-int plane_condition;
 
+int plane_condition;
 #define SLEEP 0
 #define MANUAL 1
 #define STABILIZE_NOSEUP 2
@@ -67,7 +68,6 @@ void loop() {
       break;
 
     default:
-      plane_condition=STABILIZE;
       break;
 
   }
