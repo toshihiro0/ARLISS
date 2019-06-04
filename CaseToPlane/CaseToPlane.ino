@@ -1,4 +1,5 @@
 /*Loraによる機軸伸び検知から、PPMによるモード変更まで
+*再現性がないため修正の必要があり
 作成日 2019/5/15*/
 
 #include <mavlink.h>
@@ -33,6 +34,7 @@ void loop() {
   int flightmode1[8]={0,0,0,0,165,0,0,0};
   int flightmode2[8]={0,0,0,0,425,0,0,0};
   int flightmode3[8]={0,0,0,0,815,0,0,0};
+  
 
    if(FLAG==0x0000){//フラグが0、すなわちMANUALでのスタンバイ時のみLoRa入力を受け付ける。この時同時にPPM入力もする
      while(true){
@@ -41,14 +43,14 @@ void loop() {
        }
        ChangeFlightModeTest(ch);
        LoRa_recv(buf);
-       if(strstr(buf,"cut off")!=NULL) break;
+//       Serial.println(buf);//デバッグ用
+       if(strstr(buf,"cut off")!=NULL){
+        FLAG|=FLAG_CUTOFF;
+//        Serial.println("Cut off");//デバッグ用
+        break;
+       }
      }
    }
-  
-   if(strstr(buf,"cut off")!=NULL){
-     FLAG|=FLAG_CUTOFF;
-   }
-  
   
    switch (FLAG) {
      case 0x0001:
