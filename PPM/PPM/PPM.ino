@@ -32,13 +32,13 @@ void ChangeFlightModeTest(int ch[8]){
 
 void loop(){
   int ch[8];
-  ch[0]=0;
-  ch[1]=0;
-  ch[2]=0;
-  ch[3]=0;
-  ch[4]=100;//CH5に対応
-  ch[5]=0;
-  ch[6]=0;
-  ch[7]=0;
+  int flightmode1[8]={0,0,0,0,165,0,0,0};
+  int flightmode2[8]={0,0,0,0,425,0,0,0};
+  int flightmode3[8]={0,0,0,0,815,0,0,0};
+
+  for(int i=0;i<8;i++){
+    ch[i]=flightmode3[i];
+  }
+
   ChangeFlightModeTest(ch);
 }
