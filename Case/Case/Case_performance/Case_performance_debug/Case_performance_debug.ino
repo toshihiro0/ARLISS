@@ -5,10 +5,10 @@
 
 //#defineとstatic const のどちらが良いか僕にはわからない。以下ピン設定
 //#defineのがメモリを食わないので、#defineにしておきます
-//43行目,60行目確認!!!
+//Cdsセル、0mでの気圧、気温確認、プログラム開始確認！！
 
-#define nichrome_pin_1 4 //ニクロム線1つめ
-#define nichrome_pin_2 5 //ニクロム線2つめ
+#define nichrome_pin_1 2 //ニクロム線1つめ
+#define nichrome_pin_2 3 //ニクロム線2つめ
 #define SPI_CS_PIN 10 //気圧センサ
 
 #define LoRa_sw 6 //LoRaの電源ピン
@@ -20,7 +20,7 @@ static const float release_height = 2000; //切り離し高度(m)
 
 int EEPROM_address = 0; //EEPROM用のaddress
 
-SoftwareSerial GPS_UART(2,3); //RX,TX,GPS通信用
+SoftwareSerial GPS_UART(4,5); //RX,TX,GPS通信用
 SoftwareSerial LoRa(8,9); //RX,TX,LoRa通信用
 BME280 air_pressure_sensor; //気圧センサBME280
 TinyGPSPlus gps; //GPS
@@ -72,7 +72,7 @@ void cds()
 {
     int i,sum = 0;
     static const int analogpin = 7;
-    static const int judge_value = 200;
+    static const int judge_value = 750;
     int judge_times = 0;
     boolean first = true;     
     while(judge_times < 3){ //3回連続OKでwhile抜ける
