@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-/*Loraによる機軸伸び検知から、PPMによるモード変更まで
-*再現性がないため修正の必要があり
-作成日 2019/5/15*/
-=======
 /******************************************************************
     MAVLinkAndPPM.ino
 
@@ -19,7 +14,6 @@
     https://github.com/toshihiro0/ARLISS
 
 ******************************************************************/
->>>>>>> AdjustOfCaseToPlane
 
 #include <mavlink.h>
 #include <SoftwareSerial.h>
@@ -51,51 +45,10 @@ void setup() {
 
 void loop() {
   int ch[8];
-<<<<<<< HEAD
-  int flightmode1[8]={0,0,0,0,165,0,0,0};
-  int flightmode2[8]={0,0,0,0,425,0,0,0};
-  int flightmode3[8]={0,0,0,0,815,0,0,0};
-  
-
-   if(FLAG==0x0000){//フラグが0、すなわちMANUALでのスタンバイ時のみLoRa入力を受け付ける。この時同時にPPM入力もする
-     while(true){
-       for(int i=0;i<8;i++){
-         ch[i]=flightmode1[i];
-       }
-       ChangeFlightModeTest(ch);
-       LoRa_recv(buf);
-//       Serial.println(buf);//デバッグ用
-       if(strstr(buf,"cut off")!=NULL){
-        FLAG|=FLAG_CUTOFF;
-//        Serial.println("Cut off");//デバッグ用
-        break;
-       }
-     }
-   }
-  
-   switch (FLAG) {
-     case 0x0001:
-     for(int i=0;i<8;i++){
-       ch[i]=flightmode2[i];
-     }
-     ChangeFlightModeTest(ch);
-       break;
-  
-     default:
-       for(int i=0;i<8;i++){
-         ch[i]=flightmode1[i];
-       }
-       ChangeFlightModeTest(ch);
-       break;
-   }
-  
-  
-=======
   int PPMMODE_MANUAL[8]={0,0,0,0,165,0,0,0};
   int PPMMODE_STABILIZE[8]={0,0,0,0,425,0,0,0};
   int PPMMODE_GUIDED[8]={0,0,0,0,815,0,0,0};
   char buf[128];
->>>>>>> AdjustOfCaseToPlane
 
 
   float pitch_angle;
@@ -243,6 +196,6 @@ int LoRa_recv(char *buf) {
                 return (buf - start);
             }
         }
-      
+
     }
 }
