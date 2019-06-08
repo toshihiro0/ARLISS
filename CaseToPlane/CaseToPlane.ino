@@ -74,7 +74,8 @@ void loop() {
 
 
 
-int LoRa_recv(char *buf) {
+int LoRa_recv(char *buf)
+{
     char *start = buf;
 
 //    while (true) {
@@ -159,14 +160,16 @@ void request_datastream() {
   Serial_MAVLink.write(buf, len); //Write data to serial port
 }
 
-void OnePulth(int PPMtime){
+void OnePulth(int PPMtime)
+{
   digitalWrite(13,HIGH);
   delayMicroseconds(250);
   digitalWrite(13,LOW);
   delayMicroseconds(750+PPMtime);
 }
 
-void ChangeFlightModeTest(int ch[8]){
+void ChangeFlightModeTest(int ch[8])
+{
   int ppmWaitTimeSum=0;
 
   for(int i=0;i<8;i++){
