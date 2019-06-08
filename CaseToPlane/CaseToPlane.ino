@@ -1,103 +1,106 @@
-/*Loraによる機軸伸び検知から、PPMによるモード変更まで
-*再現性がないため修正の必要があり
-作成日 2019/5/15*/
+/******************************************************************
+    MAVLinkAndPPM.ino
+
+    MAVLinkでピッチ角を取得して、絶対値が45度以内ならフライトモードを変更する.
+    関数名などの変更をしているので注意.
+
+    The circuit:
+    *MAVLink:D10,D11
+    *PPM:D13
+
+    Created 2019/6/3
+    By Toshihiro Suzuki
+
+    https://github.com/toshihiro0/ARLISS
+
+******************************************************************/
 
 #include <mavlink.h>
 #include <SoftwareSerial.h>
 #include <string.h>
 
-#define RXpin 10
-#define TXpin 11
+#define outpin 13
 
 #define M_PI 3.14159
 
-int FLAG=0x0000;//loop内で初期化するとloopが回るたびに0になってしまうため、グローバル変数として宣言
-#define FLAG_CUTOFF 0x0001
-#define FLAG_TAKEOFF 0x0002
+int plane_condition;
+#define SLEEP 0
+#define MANUAL 1
+#define STABILIZE_NOSEUP 2
+#define STABILIZE 3
+#define GUIDED 4
 
-SoftwareSerial Serial_MAVLink(RXpin, TXpin);
+SoftwareSerial SerialMavlink(10, 11);
 SoftwareSerial LoRa_ss(2,3);
 
 void setup() {
-  Serial_MAVLink.begin(57600);
-  Serial.begin(57600);
+  SerialMavlink.begin(57600); //RXTX from Pixhawk (Port 19,18 Arduino Mega)
+  Serial.begin(57600); //Main serial port for console output
   LoRa_ss.begin(19200);
-  pinMode(13,OUTPUT);
+  pinMode(outpin,OUTPUT);
 
   request_datastream();
+
 }
 
 void loop() {
-//  MavLink_receive();
-  char buf[64];
   int ch[8];
-  int flightmode1[8]={0,0,0,0,165,0,0,0};
-  int flightmode2[8]={0,0,0,0,425,0,0,0};
-  int flightmode3[8]={0,0,0,0,815,0,0,0};
-  
+  int PPMMODE_MANUAL[8]={0,0,0,0,165,0,0,0};
+  int PPMMODE_STABILIZE[8]={0,0,0,0,425,0,0,0};
+  int PPMMODE_GUIDED[8]={0,0,0,0,815,0,0,0};
+  char buf[128];
 
-   if(FLAG==0x0000){//フラグが0、すなわちMANUALでのスタンバイ時のみLoRa入力を受け付ける。この時同時にPPM入力もする
-     while(true){
-       for(int i=0;i<8;i++){
-         ch[i]=flightmode1[i];
-       }
-       ChangeFlightModeTest(ch);
-       LoRa_recv(buf);
-//       Serial.println(buf);//デバッグ用
-       if(strstr(buf,"cut off")!=NULL){
-        FLAG|=FLAG_CUTOFF;
-//        Serial.println("Cut off");//デバッグ用
-        break;
-       }
-     }
-   }
-  
-   switch (FLAG) {
-     case 0x0001:
-     for(int i=0;i<8;i++){
-       ch[i]=flightmode2[i];
-     }
-     ChangeFlightModeTest(ch);
-       break;
-  
-     default:
-       for(int i=0;i<8;i++){
-         ch[i]=flightmode1[i];
-       }
-       ChangeFlightModeTest(ch);
-       break;
-   }
-  
-  
+
+  float pitch_angle;
+
+  switch (plane_condition) {
+    case SLEEP: //溶断開始判定を受け取るまで
+      for(int i=0;i<8;i++){
+        ch[i]=PPMMODE_MANUAL[i];
+      }
+      for(int i=0;i<10;i++){
+        PPM_Transmit(ch);
+      }
+      LoRa_recv(buf);
+      if(strstr(buf,"cut off")!=NULL){
+        plane_condition=STABILIZE;
+      }
+      break;
+
+    case STABILIZE://カットオフ後
+      pitch_angle=MavLink_receive();
+      for(int i=0;i<8;i++){
+        ch[i]=PPMMODE_STABILIZE[i];
+      }
+      if(-45<pitch_angle&&pitch_angle<45){
+        plane_condition=GUIDED;
+      }
+      break;
+
+    case GUIDED://離陸判定後
+      for(int i=0;i<8;i++){
+        ch[i]=PPMMODE_GUIDED[i];
+      }
+      break;
+
+    default:
+      break;
+
+  }
+
+  PPM_Transmit(ch);
 
 }
 
-
-
-int LoRa_recv(char *buf)
-{
-    char *start = buf;
-
-//    while (true) {
-        delay(0);
-        while (LoRa_ss.available() > 0) {
-            *buf++ = LoRa_ss.read();
-            if (*(buf-2) == '\r' && *(buf-1) == '\n') {
-                *buf = '\0';
-                return (buf - start);
-            }
-        }
-//    }
-}
-
-void MavLink_receive()
+//function called by arduino to read any MAVlink messages sent by serial communication from flight controller to arduino
+float MavLink_receive()
 {
   mavlink_message_t msg;
   mavlink_status_t status;
 
-  while(Serial_MAVLink.available())
+  while(SerialMavlink.available())
   {
-    uint8_t c= Serial_MAVLink.read();
+    uint8_t c= SerialMavlink.read();
 
     //Get new message
     if(mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status))
@@ -111,7 +114,7 @@ void MavLink_receive()
       {
         mavlink_attitude_t packet;
         mavlink_msg_attitude_decode(&msg, &packet);
-        Serial.println(packet.pitch/M_PI*180.0);//不必要な情報は消去
+        return(packet.pitch/M_PI*180.0);
       }break;
       }
     }
@@ -125,7 +128,7 @@ void request_datastream() {
   uint8_t _target_system = 1; // Id # of Pixhawk (should be 1)
   uint8_t _target_component = 0; // Target component, 0 = all (seems to work with 0 or 1
   uint8_t _req_stream_id = MAV_DATA_STREAM_ALL;
-  uint16_t _req_message_rate = 0x32; //number of times per second to request the data in hex
+  uint16_t _req_message_rate = 0x03; //number of times per second to request the data in hex
   uint8_t _start_stop = 1; //1 = start, 0 = stop
 
 // STREAMS that can be requested
@@ -157,19 +160,17 @@ void request_datastream() {
   mavlink_msg_request_data_stream_pack(_system_id, _component_id, &msg, _target_system, _target_component, _req_stream_id, _req_message_rate, _start_stop);
   uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);  // Send the message (.write sends as bytes)
 
-  Serial_MAVLink.write(buf, len); //Write data to serial port
+  SerialMavlink.write(buf, len); //Write data to serial port
 }
 
-void OnePulth(int PPMtime)
-{
-  digitalWrite(13,HIGH);
+void OnePulth(int PPMtime){
+  digitalWrite(outpin,HIGH);
   delayMicroseconds(250);
-  digitalWrite(13,LOW);
+  digitalWrite(outpin,LOW);
   delayMicroseconds(750+PPMtime);
 }
 
-void ChangeFlightModeTest(int ch[8])
-{
+void PPM_Transmit(int ch[8]){
   int ppmWaitTimeSum=0;
 
   for(int i=0;i<8;i++){
@@ -181,4 +182,20 @@ void ChangeFlightModeTest(int ch[8])
   }
 
   OnePulth(20000-ppmWaitTimeSum);
+}
+
+int LoRa_recv(char *buf) {
+    char *start = buf;
+
+    while (true) {
+        delay(0);
+        while (LoRa_ss.available() > 0) {
+            *buf++ = LoRa_ss.read();
+            if (*(buf-2) == '\r' && *(buf-1) == '\n') {
+                *buf = '\0';
+                return (buf - start);
+            }
+        }
+
+    }
 }
