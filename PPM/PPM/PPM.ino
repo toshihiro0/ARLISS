@@ -35,10 +35,27 @@ void loop(){
   int flightmode1[8]={0,0,0,0,165,0,0,0};
   int flightmode2[8]={0,0,0,0,425,0,0,0};
   int flightmode3[8]={0,0,0,0,815,0,0,0};
-
+  int j;
+  
+  for(int i=0;i<8;i++){
+    ch[i]=flightmode1[i];
+  }
+  for(j = 0;j < 5;++j){
+    ChangeFlightModeTest(ch);
+  }
+  delay(3000);
+  for(int i=0;i<8;i++){
+    ch[i]=flightmode2[i];
+  }
+  for(j = 0;j < 5;++j){
+    ChangeFlightModeTest(ch);
+  }
+  delay(3000);
   for(int i=0;i<8;i++){
     ch[i]=flightmode3[i];
   }
-
-  ChangeFlightModeTest(ch);
+  for(j = 0;j < 5;++j){
+    ChangeFlightModeTest(ch);
+  }
+  delay(3000);
 }

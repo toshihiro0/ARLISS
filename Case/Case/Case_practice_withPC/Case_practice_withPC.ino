@@ -3,9 +3,10 @@
 #include <TinyGPS++.h>
 
 //#defineとstatic const のどちらが良いか僕にはわからない。以下ピン設定
+//Cdsセル、0mでの気圧、気温確認、プログラム開始確認！！
 
-static const int nichrome_pin_1 = 4; //ニクロム線1つめ
-static const int nichrome_pin_2 = 5; //ニクロム線2つめ
+static const int nichrome_pin_1 = 2; //ニクロム線1つめ
+static const int nichrome_pin_2 = 3; //ニクロム線2つめ
 static const int SPI_CS_PIN = 10; //気圧センサ
 //static const int LoRa_sw = 7; //LoRaの電源ピン、回路では実装されていない
 //static const int LoRa_rst = 6; //LoRaのRstピン、リセットのために作ってはあるけど、これ使うのか?
@@ -14,7 +15,7 @@ static const float airpressure_on_the_ground = 101540.265; //高度計算用の�
 static const float temperature_on_the_ground = 23.82; //高度計算用の地上の気温(℃)
 static const float release_height = 2000; //切り離し高度(m)
 
-SoftwareSerial GPS_UART(2,3); //RX,TX,GPS通信用
+SoftwareSerial GPS_UART(4,5); //RX,TX,GPS通信用
 BME280 air_pressure_sensor; //気圧センサBME280
 TinyGPSPlus gps; //GPS
 
@@ -44,7 +45,7 @@ void setup()
 
 void loop()
 {
-    Serial.println("The program has started.");
+    Serial.println("The program has started."); 
     delay(3000);
     Serial.println("The process has started.");
     cds(); //明暗の判定
@@ -64,7 +65,7 @@ void cds()
 {
     int i,sum = 0;
     static const int analogpin = 7;
-    static const int judge_value = 200;
+    static const int judge_value = 750;
     int judge_times = 0;     
     while(judge_times < 3){ //3回連続OKでwhile抜ける
         for(i = 0;i < 5;++i){

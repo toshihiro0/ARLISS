@@ -1,21 +1,27 @@
 #include <SoftwareSerial.h>
 #include <SparkFunBME280.h>
 #include <TinyGPS++.h>
+#include <EEPROM.h>
 
 //#defineとstatic const のどちらが良いか僕にはわからない。以下ピン設定
+//#defineのがメモリを食わないので、#defineにしておきます
+//Cdsセル、0mでの気圧、気温確認、プログラム開始確認！！
 
-static const int nichrome_pin_1 = 4; //ニクロム線1つめ
-static const int nichrome_pin_2 = 5; //ニクロム線2つめ
-static const int SPI_CS_PIN = 10; //気圧センサ
-//static const int LoRa_sw = 7; //LoRaの電源ピン、回路では実装されていない
-//static const int LoRa_rst = 6; //LoRaのRstピン、リセットのために作ってはあるけど、これ使うのか?
+#define nichrome_pin_1 2 //ニクロム線1つめ
+#define nichrome_pin_2 3 //ニクロム線2つめ
+#define SPI_CS_PIN 10 //気圧センサ
+
+#define LoRa_sw 6 //LoRaの電源ピン
+#define LoRa_rst 7 //LoRaのRstピン
 
 static const float airpressure_on_the_ground = 101540.265; //高度計算用の地上の気圧(Pa)
 static const float temperature_on_the_ground = 23.82; //高度計算用の地上の気温(℃)
 static const float release_height = 2000; //切り離し高度(m)
 
-SoftwareSerial GPS_UART(2,3); //RX,TX,GPS通信用
-SoftwareSerial LoRa_UART(7,8); //RX,TX,Lora通信用
+int EEPROM_address = 0; //EEPROM用のaddress
+
+SoftwareSerial GPS_UART(4,5); //RX,TX,GPS通信用
+SoftwareSerial LoRa(8,9); //RX,TX,LoRa通信用
 BME280 air_pressure_sensor; //気圧センサBME280
 TinyGPSPlus gps; //GPS
 
@@ -24,6 +30,7 @@ float heightjudge(void); //気圧センサの高度判定
 void nichromecut(void); //ケーシング展開
 void senttoLora(float);
 void gps_transmission(void); //GPS情報の送信
+void LoRa_reset(void);
 
 void setup()
 {
@@ -36,20 +43,22 @@ void setup()
     pinMode(nichrome_pin_2,OUTPUT);
     digitalWrite(nichrome_pin_2,LOW);
 
-    //pinMode(LoRa_sw,OUTPUT); //LoRaの通信
-    //digitalWrite(LoRa_sw,LOW);
+    pinMode(LoRa_sw,OUTPUT); //LoRaの通信
+    digitalWrite(LoRa_sw,HIGH); //ここを変えること！！！
+    pinMode(LoRa_rst,OUTPUT);
+    digitalWrite(LoRa_rst,HIGH);
 
     GPS_UART.begin(9600); //GPSとの通信
-    LoRa_UART.begin(115200);
 
-    Serial.begin(115200); //PCとの通信
+    LoRa.begin(115200); //Loraとの通信
 }
 
 void loop()
 {
     float height; //高度判定
-    Serial.println("The process has started.");
-    LoRa_UART.print("The process has started.\r");
+    LoRa.print("The program has started.\r"); //本番もここら辺のdelay必要か?
+    delay(5000);
+    LoRa.print("The process has started.\r");
     cds(); //明暗の判定
     //digitalWrite(LoRa_sw,HIGH); //ロケットから放出されたので、通信を開始してOK
     //Serial.begin(19200); //通信開始には多少待つ必要があるみたいだけど...
@@ -63,21 +72,35 @@ void cds()
 {
     int i,sum = 0;
     static const int analogpin = 7;
-    static const int judge_value = 200;
-    int judge_times = 0;     
+    static const int judge_value = 750;
+    int judge_times = 0;
+    boolean first = true;     
     while(judge_times < 3){ //3回連続OKでwhile抜ける
         for(i = 0;i < 5;++i){
             sum += analogRead(analogpin); //アナログピンの読み取り
-            delay(2); //少しずつ遅らせて取らないと、何回も計測する意味が無い
+            delay(20); //少しずつ遅らせて取らないと、何回も計測する意味が無い
         }
         int value = sum/5;
         if(value > judge_value){ //暗い時はVoltageが小さい、明るい時はVoltageが大きい
             sum = 0;
             ++judge_times;
+            if(judge_times == 3){
+                EEPROM.write(EEPROM_address,2);
+                ++EEPROM_address;
+                EEPROM.write(EEPROM_address,value);
+                ++EEPROM_address;
+            }
             continue; //もう一度
         }else{
             judge_times = 0;
             sum = 0; //初期化
+            if(first){
+                EEPROM.write(EEPROM_address,1);
+                ++EEPROM_address;
+                EEPROM.write(EEPROM_address,value);
+                ++EEPROM_address;
+                first = false;
+            }
             continue; //また計測
         }
     }
@@ -98,11 +121,13 @@ float heightjudge()
     while(true){
         air_pressure_sensor.readTempC(); //よくわからないがこれを無くすと気圧の値がおかしくなる?????。
         pressure = air_pressure_sensor.readFloatPressure();
-        Serial.println(pressure);
         height = (1-pow(pressure/airpressure_on_the_ground,0.19035714))/0.0065*(temperature_on_the_ground+temperature_correction);
-        Serial.println(height);
         if(height <= release_height){
             air_pressure_sensor.setMode(MODE_SLEEP); //気圧センサスリープモード(電源消費を抑える)
+            EEPROM.write(EEPROM_address,3);
+            ++EEPROM_address;
+            EEPROM.write(EEPROM_address,(int)height);
+            ++EEPROM_address;
             return height;
         }else{
             delay(10);
@@ -117,41 +142,53 @@ void nichromecut()
     delay(3000);
     digitalWrite(nichrome_pin_1,LOW);
     delay(10); //とりあえず
+    EEPROM.write(EEPROM_address,4);
+    ++EEPROM_address;
     digitalWrite(nichrome_pin_2,HIGH);
     delay(3000);
     digitalWrite(nichrome_pin_2,LOW);
+    EEPROM.write(EEPROM_address,5);
+    ++EEPROM_address;
     return;
 }
 
 void senttoLora(float height)
 {
-    LoRa_UART.print("Case has released.\r");
+    LoRa.print("Case has released.\r");
     delay(500);
-    LoRa_UART.print("The pointed height has arrived.\r");
+    LoRa.print("The pointed height has arrived.\r");
     delay(500);
-    LoRa_UART.print("Height: ");
+    LoRa.print("Height: ");
     delay(500);
-    LoRa_UART.print(height);
+    LoRa.print(height);
     delay(500);
-    LoRa_UART.print("\r");
+    LoRa.print("\r");
     delay(500);
-    LoRa_UART.println("The aircraft has released.\r");
+    LoRa.print("The aircraft has released.\r");
     delay(500);
     return;
 }
 
 void gps_transmission()
 {
+    EEPROM.write(EEPROM_address,6);
+    ++EEPROM_address;
     while(true){
         while (GPS_UART.available() > 0){
             char c = GPS_UART.read();
             gps.encode(c);
             if(gps.location.isUpdated()){
-                Serial.print("LAT="); Serial.println(gps.location.lat(), 6);
-                Serial.print("LONG="); Serial.println(gps.location.lng(), 6);
-                Serial.print("ALT="); Serial.println(gps.altitude.meters());
+                LoRa.print("LAT=");delay(100);LoRa.print(gps.location.lat(), 6);delay(100);LoRa.print("\r");delay(500);
+                LoRa.print("LONG=");delay(100);LoRa.print(gps.location.lng(), 6);delay(100);LoRa.print("\r");delay(500);
+                LoRa.print("ALT=");delay(100);LoRa.println(gps.altitude.meters());delay(100);LoRa.print("\r");delay(500);
             }
-            delay(1000);
         }
     }
+}
+
+void LoRa_reset()
+{
+    digitalWrite(LoRa_rst,LOW);
+    delay(1); //1msで十分
+    digitalWrite(LoRa_rst,HIGH);
 }
