@@ -5,7 +5,11 @@
 
 //#defineとstatic const のどちらが良いか僕にはわからない。以下ピン設定
 //#defineのがメモリを食わないので、#defineにしておきます
+//EEPROMによる再起動の冗長系をまだ入れていません。
+//時間による冗長系をまだ入れていません。
+
 //Cdsセル、0mでの気圧、気温確認、プログラム開始確認！！
+
 
 #define nichrome_pin_1 2 //ニクロム線1つめ
 #define nichrome_pin_2 3 //ニクロム線2つめ
