@@ -23,12 +23,13 @@
 
 #define M_PI 3.14159
 
-int plane_condition;
 #define SLEEP 0
 #define MANUAL 1
 #define STABILIZE_NOSEUP 2
 #define STABILIZE 3
 #define GUIDED 4
+
+int plane_condition = MANUAL;
 
 SoftwareSerial SerialMavlink(10, 11);
 SoftwareSerial LoRa_ss(2,3);
@@ -185,12 +186,11 @@ void PPM_Transmit(int ch[8]){
 }
 
 int LoRa_recv(char *buf) {
-    char *start = buf;
+    char *string_pointer = buf;
 
     while (true) {
-        delay(0);
         while (LoRa_ss.available() > 0) {
-            *buf++ = LoRa_ss.read();
+            *string_pointer++ = LoRa_ss.read();
             if (*(buf-2) == '\r' && *(buf-1) == '\n') {
                 *buf = '\0';
                 return (buf - start);
