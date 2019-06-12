@@ -14,22 +14,6 @@ void setup()
 int number = 0;
 void loop() 
 {
-<<<<<<< HEAD
-      if(LoRa_ss.available()){
-        Serial.write(LoRa_ss.read());
-      }
-      if(Serial.available()){
-        LoRa_ss.write(Serial.read());
-      }
-   
-   /*while(true){
-    LoRa_ss.print("hogehoge");
-    LoRa_ss.print(number);
-    LoRa_ss.print("\r");
-    ++number;
-    delay(1000);
-   }*/
-=======
    if(LoRa_ss.available()){
       Serial.write(LoRa_ss.read());//受信したデータの読み込み
    }
@@ -41,6 +25,5 @@ void loop()
 //   LoRa_ss.print("\r");
 //   ++number;
 //   delay(1000);
->>>>>>> upstream/master
    
 }

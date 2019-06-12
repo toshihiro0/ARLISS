@@ -13,6 +13,8 @@ void setup() {
 request_datastream();
  
 }
+
+int time1 = 0,time2;
  
 void loop() {
  
@@ -22,7 +24,7 @@ MavLink_receive();
  
 //function called by arduino to read any MAVlink messages sent by serial communication from flight controller to arduino
 void MavLink_receive()
-{ 
+{
   mavlink_message_t msg;
   mavlink_status_t status;
  
@@ -47,6 +49,9 @@ void MavLink_receive()
         Serial.print("roll: ");Serial.println(packet.roll/M_PI*180.0);
         Serial.print("pitch: ");Serial.println(packet.pitch/M_PI*180.0);
         Serial.print("yaw: ");Serial.println(packet.yaw/M_PI*180.0);
+        time2 = millis();
+        Serial.println(time2-time1);
+        time1 = time2;
       }break;
       }
     }
