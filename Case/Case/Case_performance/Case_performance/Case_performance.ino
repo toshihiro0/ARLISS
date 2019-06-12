@@ -20,7 +20,7 @@ static const float airpressure_on_the_ground = 101540.265; //高度計算用の�
 static const float temperature_on_the_ground = 23.82; //高度計算用の地上の気温(℃)
 static const float release_height = 2000; //切り離し高度(m)
 
-SoftwareSerial GPS_UART(4,5); //RX,TX,GPS通信用
+SoftwareSerial GPS_UART(5,4); //RX,TX,GPS通信用
 SoftwareSerial LoRa(8,9); //RX,TX,LoRa通信用
 BME280 air_pressure_sensor; //気圧センサBME280
 TinyGPSPlus gps; //GPS
@@ -50,7 +50,7 @@ void setup()
 
     GPS_UART.begin(9600); //GPSとの通信
 
-    LoRa.begin(115200); //Loraとの通信
+    LoRa.begin(19200); //Loraとの通信
 }
 
 void loop()

@@ -1,12 +1,12 @@
 #include<SoftwareSerial.h>
-SoftwareSerial LoRa_ss(2,3);
+SoftwareSerial LoRa_ss(8,9);
 
 void setup()
 {
-   pinMode(4,OUTPUT);
-   pinMode(5,OUTPUT);
-   digitalWrite(4,HIGH);
-   digitalWrite(5,HIGH);
+   pinMode(6,OUTPUT);
+   digitalWrite(6,HIGH);
+   pinMode(7,OUTPUT);
+   digitalWrite(7,HIGH);
    Serial.begin(57600);
    LoRa_ss.begin(19200);
 }
