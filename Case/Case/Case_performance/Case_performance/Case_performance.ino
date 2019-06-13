@@ -21,7 +21,6 @@ static const float temperature_on_the_ground = 23.82; //高度計算用の地上
 static const float release_height = 2000; //切り離し高度(m)
 
 SoftwareSerial GPS_UART(5,4); //RX,TX,GPS通信用
-SoftwareSerial LoRa(8,9); //RX,TX,LoRa通信用
 BME280 air_pressure_sensor; //気圧センサBME280
 TinyGPSPlus gps; //GPS
 
@@ -50,15 +49,16 @@ void setup()
 
     GPS_UART.begin(9600); //GPSとの通信
 
-    LoRa.begin(19200); //Loraとの通信
+    Serial.begin(19200); //Loraとの通信
 }
 
 void loop()
 {
     float height; //高度判定
-    LoRa.print("The program has started.\r");
+    delay(1200);
+    Serial.print("The program has started.\r");
     delay(5000);
-    LoRa.print("The process has started.\r");
+    Serial.print("The process has started.\r");
     cds(); //明暗の判定
     //digitalWrite(LoRa_sw,HIGH); //ロケットから放出されたので、通信を開始してOK
     //Serial.begin(19200); //通信開始には多少待つ必要があるみたいだけど...
@@ -132,17 +132,17 @@ void nichromecut()
 
 void senttoLora(float height)
 {
-    LoRa.print("Case has released.\r");
+    Serial.print("Case has released.\r");
     delay(500);
-    LoRa.print("The pointed height has arrived.\r");
+    Serial.print("The pointed height has arrived.\r");
     delay(500);
-    LoRa.print("Height: ");
+    Serial.print("Height: ");
     delay(500);
-    LoRa.print(height);
+    Serial.print(height);
     delay(500);
-    LoRa.print("\r");
+    Serial.print("\r");
     delay(500);
-    LoRa.print("The aircraft has released.\r");
+    Serial.print("The aircraft has released.\r");
     delay(500);
     return;
 }
@@ -150,15 +150,17 @@ void senttoLora(float height)
 void gps_transmission()
 {
     while(true){
+        delay(100);
         while (GPS_UART.available() > 0){
             char c = GPS_UART.read();
             gps.encode(c);
             if(gps.location.isUpdated()){
-                LoRa.print("LAT=");delay(100);LoRa.print(gps.location.lat(), 6);delay(100);LoRa.print("\r");delay(500);
-                LoRa.print("LONG=");delay(100);LoRa.print(gps.location.lng(), 6);delay(100);LoRa.print("\r");delay(500);
-                LoRa.print("ALT=");delay(100);LoRa.println(gps.altitude.meters());delay(100);LoRa.print("\r");delay(500);
+                Serial.print("LAT=");delay(100);Serial.print(gps.location.lat(), 6);delay(100);Serial.print("\r");delay(500);
+                Serial.print("LONG=");delay(100);Serial.print(gps.location.lng(), 6);delay(100);Serial.print("\r");delay(500);
+                Serial.print("ALT=");delay(100);Serial.println(gps.altitude.meters());delay(100);Serial.print("\r");delay(500);
             }
         }
+        delay(500);
     }
 }
 
