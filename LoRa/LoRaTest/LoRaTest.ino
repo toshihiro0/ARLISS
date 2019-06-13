@@ -11,7 +11,7 @@ void setup()
    LoRa_ss.begin(19200);
 }
 
-int number = 0;
+// int number = 0;
 void loop() 
 {
    if(LoRa_ss.available()){
