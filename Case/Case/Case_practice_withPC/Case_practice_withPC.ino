@@ -5,11 +5,11 @@
 //#defineとstatic const のどちらが良いか僕にはわからない。以下ピン設定
 //Cdsセル、0mでの気圧、気温確認、プログラム開始確認！！
 
-#define nichrome_pin_1 2; //ニクロム線1つめ
-#define nichrome_pin_2 3; //ニクロム線2つめ
-#define SPI_CS_PIN 10; //気圧センサ
-//static const int LoRa_sw = 7; //LoRaの電源ピン、回路では実装されていない
-//static const int LoRa_rst = 6; //LoRaのRstピン、リセットのために作ってはあるけど、これ使うのか?
+#define nichrome_pin_1 2 //ニクロム線1つめ
+#define nichrome_pin_2 3 //ニクロム線2つめ
+#define SPI_CS_PIN 10 //気圧センサ
+//static const int LoRa_sw = 6; //LoRaの電源ピン、回路では実装されていない
+//static const int LoRa_rst = 7; //LoRaのRstピン、リセットのために作ってはあるけど、これ使うのか?
 
 static const float airpressure_on_the_ground = 101540.265; //高度計算用の地上の気圧(Pa)
 static const float temperature_on_the_ground = 23.82; //高度計算用の地上の気温(℃)
