@@ -6,11 +6,14 @@
 #define M_PI 3.14159
 SoftwareSerial Serial1(RXpin, TXpin); // sets up serial communication on pins 3 and 2
  
-void setup() {
+void setup()
+{
   Serial1.begin(57600); //RXTX from Pixhawk (Port 19,18 Arduino Mega)
-  Serial.begin(57600); //Main serial port for console output
+  Serial.begin(19200); //Main serial port for console output
  
-request_datastream();
+  request_datastream();
+
+  delay(1200);
  
 }
 
@@ -44,15 +47,12 @@ void MavLink_receive()
       {
         mavlink_attitude_t packet;
         mavlink_msg_attitude_decode(&msg, &packet);
-        Serial.print("msg.msgid: ");Serial.println(msg.msgid);
-        Serial.print("MAVLINK_MSG_ID_ATTITUDE: ");Serial.println(MAVLINK_MSG_ID_ATTITUDE);
-        Serial.print("roll: ");Serial.println(packet.roll/M_PI*180.0);
-        Serial.print("pitch: ");Serial.println(packet.pitch/M_PI*180.0);
-        Serial.print("yaw: ");Serial.println(packet.yaw/M_PI*180.0);
-        time2 = millis();
-        Serial.println(time2-time1);
-        time1 = time2;
-      }break;
+        //Serial.print("msg.msgid: ");Serial.print(msg.msgid);Serial.print("\r");delay(200);
+        //Serial.print("MAVLINK_MSG_ID_ATTITUDE: ");Serial.println(MAVLINK_MSG_ID_ATTITUDE);
+        Serial.print("roll:");delay(50);Serial.print(packet.roll/M_PI*180.0);delay(60);Serial.print("\r");delay(10);
+        Serial.print("pitch:");delay(60);Serial.print(packet.pitch/M_PI*180.0);delay(60);Serial.print("\r");delay(10);
+        Serial.print("yaw:");delay(40);Serial.print(packet.yaw/M_PI*180.0);delay(60);Serial.print("\r");delay(10);
+        }break;
       }
     }
   }
