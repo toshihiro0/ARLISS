@@ -5,8 +5,8 @@
 
 #define outpin 13 //PPM
 
-#define deploy_judge_pin_INPUT 100
-#define deploy_judge_pin_OUTPUT 111
+#define deploy_judge_pin_INPUT  
+#define deploy_judge_pin_OUTPUT 
 
 #define SLEEP 0
 #define MANUAL 1
@@ -15,7 +15,6 @@
 #define GUIDED 4
 
 SoftwareSerial SerialMavlink(10, 11); //Pixhawkと接続
-SoftwareSerial Lora(2,3); //LoRaのSS
 
 //loopで何回も宣言するのが嫌だからグローバル宣言
 int PPMMODE_MANUAL[8] = {0,0,0,0,165,0,0,0};
@@ -26,13 +25,13 @@ int PPMMODE_GUIDED[8] = {0,0,0,0,815,0,0,0};
 void setup()
 {
     SerialMavlink.begin(57600); //RXTX from Pixhawk
-  	Serial.begin(57600); //Main serial port for console output
-  	Lora.begin(19200);
+  	Serial.begin(/*57600*/); //パソコンで見たいときはパソコン、LoRaで見たいときは以下の時間を全て変える。
     
   	pinMode(outpin,OUTPUT);
 
-    pinMode(deploy_judge_pin_INPUT,INPUT);
+    pinMode(deploy_judge_pin_INPUT,INPUT_PULLUP);
     pinMode(deploy_judge_pin_OUTPUT,OUTPUT);
+    digitalWrite(deploy_judge_pin_OUTPUT,LOW);
     
   	request_datastream();
     EEPROM.write(0,0);
@@ -54,9 +53,11 @@ void loop()
         	    PPM_Transmit(ch);
       		}
             while(true){
-                if(deploy_judge_pin_INPUT == LOW){
+                if(digitalRead(deploy_judge_pin_INPUT) == HIGH){
+                    digitalWrite(deploy_judge_pin_OUTPUT,HIGH);
                     EEPROM.write(0,STABILIZE_NOSEUP); //再起動しても大丈夫なように、先に書き込んでおきたい
-        		    plane_condition=STABILIZE_NOSEUP;
+        		    plane_condition = STABILIZE_NOSEUP;
+                    Serial.println("SLEEP END");
                     break;
       		    }else{
                     delay(500); //まぁsleepの間はこれは短くてもいいでしょう。
@@ -73,6 +74,7 @@ void loop()
                 PPM_Transmit(ch);
             }
             //ここまでに2回目溶断は終わっているはず
+            Serial.println("STABILIZE_NOSEUP END");
             EEPROM.write(0,STABILIZE);
             plane_condition = STABILIZE;
 		break;
@@ -83,11 +85,14 @@ void loop()
       		}
             PPM_Transmit(ch);
             stabilize_func(ch); //時間による冗長系が欲しかったので、stabilize_func()を作った、これが終わったらstabilize終了
+            Serial.println("Stabilize END");
             EEPROM.write(0,GUIDED);
         	plane_condition = GUIDED;
+            
       	break;
 
     	case GUIDED://離陸判定後
+            Serial.println("GUIDED start");
       		for(i=0;i<8;i++){
         		ch[i] = PPMMODE_GUIDED[i];
       		}
@@ -140,10 +145,10 @@ void MavLink_receive_GPS_and_send_with_LoRa()
                 {
                     mavlink_gps_raw_int_t packet;
                     mavlink_msg_gps_raw_int_decode(&msg, &packet);
-                    Lora.print("Lat: ");Lora.println(packet.lat);
-                    Lora.print("Long: ");Lora.println(packet.lon);
-                    Lora.print("Alt; ");Lora.println(packet.alt);
-                    Lora.print("Speed: ");Lora.println(packet.vel);
+                    //Lora.print("Lat: ");Lora.println(packet.lat);
+                    //Lora.print("Long: ");Lora.println(packet.lon);
+                    //Lora.print("Alt; ");Lora.println(packet.alt);
+                    //Lora.print("Speed: ");Lora.println(packet.vel);
                 }
                 break;
             }
@@ -225,7 +230,8 @@ void stabilize_func(int ch[8])
     int time_temp_2;
     while(true){
         pitch_angle = MavLink_receive_attitude();
-        if(-45<pitch_angle&&pitch_angle<45){
+        Serial.println(pitch_angle);
+        if(-45<pitch_angle && pitch_angle<45){
             return;
         }else{
             time_temp_2 = millis();
