@@ -14,7 +14,6 @@
 #define GUIDED 4
 
 SoftwareSerial SerialMavlink(10, 11); //Pixhawkと接続
-SoftwareSerial LoRa(2,3); //LoRaのSS
 
 //loopで何回も宣言するのが嫌だからグローバル宣言
 //Cdsセルでの機体開放は未実装(冗長系に使いたい)、231行
@@ -28,8 +27,7 @@ int PPMMODE_GUIDED[8] = {0,0,0,0,815,0,0,0};
 void setup()
 {
   	SerialMavlink.begin(57600); //RXTX from Pixhawk
-  	Serial.begin(57600); //Main serial port for console output
-  	LoRa.begin(19200);
+  	Serial.begin(19200); //LoRaとの通信
   	pinMode(outpin,OUTPUT);
   	request_datastream();
     EEPROM.write(0,0);
@@ -249,4 +247,8 @@ void LoRa_recv(int ch[8]){
             continue; //まだなのでcutoffが来るまで待つ。
         }
     }
+}
+
+void LoRa_recv(int ch[8]){
+    
 }
