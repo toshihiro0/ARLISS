@@ -68,7 +68,7 @@ void loop()
 
 		case STABILIZE_NOSEUP:
 			for(i = 0;i < 8;++i){
-				ch[i] = PPMMODE_GUIDED[i];
+				ch[i] = PPMMODE_STABILIZENOSEUP[i];
 			}
             for(i = 0;i < 20;++i){ //200ms*20より、 4秒間はPPMを送る
                 PPM_Transmit(ch);

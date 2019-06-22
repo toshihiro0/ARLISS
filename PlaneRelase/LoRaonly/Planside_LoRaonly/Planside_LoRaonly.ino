@@ -5,7 +5,6 @@
 #include <math.h>
 
 #define outpin 13 //PPM
-#define deployment_judge_pin 
 
 #define SLEEP 0
 #define MANUAL 1
@@ -28,7 +27,9 @@ void setup()
 {
   	SerialMavlink.begin(57600); //RXTX from Pixhawk
   	Serial.begin(19200); //LoRaとの通信
+
   	pinMode(outpin,OUTPUT);
+    
   	request_datastream();
     EEPROM.write(0,0);
 }
@@ -47,7 +48,14 @@ void loop()
       		for(int i = 0;i < 10;++i){
         	    PPM_Transmit(ch);
       		}
-            LoRa_recv(ch); //中でPPMも送ってあげる
+            while(true){
+                char buf[128];
+                LoRa_recv(ch, buf); //中でPPMも送ってあげる
+                if(strstr(buf,"cutoff") != NULL){
+                    break;
+                }
+            }
+            Serial.print("SLEEP END");
             EEPROM.write(0,STABILIZE_NOSEUP);
             plane_condition = STABILIZE_NOSEUP;
       	break;
@@ -57,11 +65,12 @@ void loop()
 				ch[i] = PPMMODE_GUIDED[i];
 			}
             PPM_Transmit(ch);
-            LoRa.print("cutoff\r");
+            Serial.print("cutoff\r");
             for(i = 0;i < 15;++i){ //200ms*15より、 3秒間はPPMを送る
                 PPM_Transmit(ch);
             }
             //ここまでに2回目溶断は終わっているはず
+            Serial.print("STABILIZE_NOSEUPEND");
             EEPROM.write(0,STABILIZE);
             plane_condition = STABILIZE;
 		break;
@@ -72,6 +81,7 @@ void loop()
       		}
             PPM_Transmit(ch);
             stabilize_func(ch); //時間による冗長系が欲しかったので、stabilize_func()を作った、これが終わったらstabilize終了
+            Serial.print("STABILIZE END");
             EEPROM.write(0,GUIDED);
         	plane_condition = GUIDED;
       	break;
@@ -83,6 +93,7 @@ void loop()
             for(i= 0;i < 10;++i){
                 PPM_Transmit(ch); //Guided確定
             }
+            Serial.print("GUIDED");
             MavLink_receive_GPS_and_send_with_LoRa();
             delay(1000); //あまり高頻度のGPS送るにしてもなぁ...(多分この後に一番最後の機構が入る。)
       	break;
@@ -93,7 +104,7 @@ void loop()
 }
 
 //function called by arduino to read any MAVlink messages sent by serial communication from flight controller to arduino
-float MavLink_receive()
+float MavLink_receive_attitude()
 {
     mavlink_message_t msg;
     mavlink_status_t status;
@@ -129,10 +140,10 @@ void MavLink_receive_GPS_and_send_with_LoRa()
                 {
                     mavlink_gps_raw_int_t packet;
                     mavlink_msg_gps_raw_int_decode(&msg, &packet);
-                    LoRa.print("Lat: ");LoRa.println(packet.lat);
-                    LoRa.print("Long: ");LoRa.println(packet.lon);
-                    LoRa.print("Alt; ");LoRa.println(packet.alt);
-                    LoRa.print("Speed: ");LoRa.println(packet.vel);
+                    Serial.print("Lat: ");Serial.println(packet.lat);
+                    Serial.print("Long: ");Serial.println(packet.lon);
+                    Serial.print("Alt; ");Serial.println(packet.alt);
+                    Serial.print("Speed: ");Serial.println(packet.vel);
                 }
                 break;
             }
@@ -213,7 +224,7 @@ void stabilize_func(int ch[8])
     int time_temp_1 = millis();
     int time_temp_2;
     while(true){
-        pitch_angle = MavLink_receive();
+        pitch_angle = MavLink_receive_attitude();
         if(-45<pitch_angle&&pitch_angle<45){
             return;
         }else{
@@ -228,27 +239,23 @@ void stabilize_func(int ch[8])
     } //breakは無いが、returnで戻るようになっている。
 }
 
-void LoRa_recv(int ch[8]){
-    char buf[128];
-    char* temp; //開始を記憶
-    while(true){ //ここの無限ループどうにかしたい
-        temp = buf;
-        while (LoRa.available() > 0){
-            *temp++ = LoRa.read();
-            if (*(temp-1) == '\r') {
-                *temp = '\0';
-                break;
+void LoRa_recv(int ch[8], char *buf)
+{
+    char *strint_pointer = buf;
+    int time1 = millis();
+    int time2;
+    while(true){
+        while(Serial.available() > 0){
+            *buf++ = Serial.read();
+            if(*(buf-1) == '\r'){
+                *buf = '\0';
+                return;
             }
         }
-        if(strstr(buf, "cutoff") != NULL){
-            return; //cutoffが入っていたので帰れる
-        }else{
-            PPM_Transmit(ch); //MANUAL続行
-            continue; //まだなのでcutoffが来るまで待つ。
+        time2 = millis();
+        if((time2-time1) > 10000){
+            PPM_Transmit(ch);
+            time1 = time2;
         }
     }
-}
-
-void LoRa_recv(int ch[8]){
-    
 }
