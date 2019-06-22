@@ -7,7 +7,7 @@ void setup()
    pinMode(7,OUTPUT);
    digitalWrite(7,HIGH);
    Serial.begin(19200);
-   delay(1200);
+   delay(2000);
 }
 
 int number = 0;
