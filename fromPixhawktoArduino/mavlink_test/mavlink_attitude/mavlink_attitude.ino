@@ -49,9 +49,9 @@ void MavLink_receive()
         mavlink_msg_attitude_decode(&msg, &packet);
         //Serial.print("msg.msgid: ");Serial.print(msg.msgid);Serial.print("\r");delay(200);
         //Serial.print("MAVLINK_MSG_ID_ATTITUDE: ");Serial.println(MAVLINK_MSG_ID_ATTITUDE);
-        Serial.print("roll:");delay(50);Serial.print(packet.roll/M_PI*180.0);delay(60);Serial.print("\r");delay(10);
-        Serial.print("pitch:");delay(60);Serial.print(packet.pitch/M_PI*180.0);delay(60);Serial.print("\r");delay(10);
-        Serial.print("yaw:");delay(40);Serial.print(packet.yaw/M_PI*180.0);delay(60);Serial.print("\r");delay(10);
+        Serial.print("roll:");delay(100);Serial.print(packet.roll/M_PI*180.0);delay(100);Serial.print("\r");delay(300);
+        Serial.print("pitch:");delay(100);Serial.print(packet.pitch/M_PI*180.0);delay(100);Serial.print("\r");delay(300);
+        Serial.print("yaw:");delay(100);Serial.print(packet.yaw/M_PI*180.0);delay(100);Serial.print("\r");delay(300);
         }break;
       }
     }
