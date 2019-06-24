@@ -21,7 +21,7 @@ MavLink_receive();
  
 //function called by arduino to read any MAVlink messages sent by serial communication from flight controller to arduino
 void MavLink_receive()
-  { 
+{ 
   mavlink_message_t msg;
   mavlink_status_t status;
  

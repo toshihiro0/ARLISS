@@ -1,27 +1,9 @@
-/******************************************************************
-    MAVLinkAndPPM.ino
-
-    MAVLinkでピッチ角を取得して、絶対値が45度以内ならフライトモードを変更する.
-    関数名などの変更をしているので注意.
-
-    The circuit:
-    *MAVLink:D10,D11
-    *PPM:D13
-
-    Created 2019/6/3
-    By Toshihiro Suzuki
-
-    https://github.com/toshihiro0/ARLISS
-
-******************************************************************/
-
 #include <mavlink.h>
 #include <SoftwareSerial.h>
 #include <string.h>
+#include <math.h>
 
-#define outpin 13
-
-#define M_PI 3.14159
+#define outpin 13 //PPM
 
 #define SLEEP 0
 #define MANUAL 1
@@ -31,65 +13,70 @@
 
 int plane_condition = MANUAL;
 
-SoftwareSerial SerialMavlink(10, 11);
-SoftwareSerial LoRa_ss(2,3);
+SoftwareSerial SerialMavlink(10, 11); //Pixhawkと接続
+SoftwareSerial LoRa_ss(2,3); //LoRaのSS
 
-void setup() {
-  SerialMavlink.begin(57600); //RXTX from Pixhawk (Port 19,18 Arduino Mega)
-  Serial.begin(57600); //Main serial port for console output
-  LoRa_ss.begin(19200);
-  pinMode(outpin,OUTPUT);
-
-  request_datastream();
-
+void setup()
+{
+  	SerialMavlink.begin(57600); //RXTX from Pixhawk (Port 19,18 Arduino Mega)
+  	Serial.begin(57600); //Main serial port for console output
+  	LoRa_ss.begin(19200);
+  	pinMode(outpin,OUTPUT);
+  	request_datastream();
 }
 
 void loop() {
-  int ch[8];
-  int PPMMODE_MANUAL[8]={0,0,0,0,165,0,0,0};
-  int PPMMODE_STABILIZE[8]={0,0,0,0,425,0,0,0};
-  int PPMMODE_GUIDED[8]={0,0,0,0,815,0,0,0};
-  char buf[128];
+  	int ch[8];
+  	int PPMMODE_MANUAL[8] = {0,0,0,0,165,0,0,0};
+  	int PPMMODE_STABILIZE[8] = {0,0,0,0,425,0,0,0};
+  	int PPMMODE_STABILIZENOSEUP[8] = {0,400,0,0,425,0,0,0} //傾きがひどいと流れが剥離して全然効かなくなるかも、と思ったので400に抑えている。
+  	int PPMMODE_GUIDED[8] = {0,0,0,0,815,0,0,0};
+  	char buf[128];
 
+	int i; //for文のループ数
+  	float pitch_angle;
 
-  float pitch_angle;
+  	switch (plane_condition) {
+    	case SLEEP: //溶断開始判定を受け取るまで
+      		for(i=0;i<8;i++){
+        		ch[i]=PPMMODE_MANUAL[i];
+      		}
+      		for(int i=0;i<10;i++){
+        	PPM_Transmit(ch);
+      		}
+      		LoRa_recv(buf);
+      		if(strstr(buf,"cut off")!=NULL){
+        		plane_condition=STABILIZE_NOSEUP;
+      		}
+      	break;
 
-  switch (plane_condition) {
-    case SLEEP: //溶断開始判定を受け取るまで
-      for(int i=0;i<8;i++){
-        ch[i]=PPMMODE_MANUAL[i];
-      }
-      for(int i=0;i<10;i++){
-        PPM_Transmit(ch);
-      }
-      LoRa_recv(buf);
-      if(strstr(buf,"cut off")!=NULL){
-        plane_condition=STABILIZE;
-      }
-      break;
+		  case STABILIZE_NOSEUP:
+			  for(i = 0;i < 8;++i){
+				  ch[i] = PPMMODE_GUIDED[i];
+			  }
+		  break;
 
-    case STABILIZE://カットオフ後
-      pitch_angle=MavLink_receive();
-      for(int i=0;i<8;i++){
-        ch[i]=PPMMODE_STABILIZE[i];
-      }
-      if(-45<pitch_angle&&pitch_angle<45){
-        plane_condition=GUIDED;
-      }
-      break;
+    	case STABILIZE://カットオフ後
+      		pitch_angle=MavLink_receive();
+      		for(i=0;i<8;i++){
+        		ch[i]=PPMMODE_STABILIZE[i];
+      		}
+      		if(-45<pitch_angle&&pitch_angle<45){
+        		plane_condition=GUIDED;
+      		}
+      	break;
 
-    case GUIDED://離陸判定後
-      for(int i=0;i<8;i++){
-        ch[i]=PPMMODE_GUIDED[i];
-      }
-      break;
+    	case GUIDED://離陸判定後
+      		for(i=0;i<8;i++){
+        		ch[i] = PPMMODE_GUIDED[i];
+      		}
+      	break;
 
-    default:
-      break;
+    	default:
+      	break;
+  	}
 
-  }
-
-  PPM_Transmit(ch);
+  	PPM_Transmit(ch);
 
 }
 
@@ -129,7 +116,7 @@ void request_datastream() {
   uint8_t _target_system = 1; // Id # of Pixhawk (should be 1)
   uint8_t _target_component = 0; // Target component, 0 = all (seems to work with 0 or 1
   uint8_t _req_stream_id = MAV_DATA_STREAM_ALL;
-  uint16_t _req_message_rate = 0x03; //number of times per second to request the data in hex
+  uint16_t _req_message_rate = 0x32; //number of times per second to request the data in hex
   uint8_t _start_stop = 1; //1 = start, 0 = stop
 
 // STREAMS that can be requested
@@ -186,11 +173,12 @@ void PPM_Transmit(int ch[8]){
 }
 
 int LoRa_recv(char *buf) {
-    char *string_pointer = buf;
+    char *start = buf;
 
     while (true) {
+        delay(0);
         while (LoRa_ss.available() > 0) {
-            *string_pointer++ = LoRa_ss.read();
+            *buf++ = LoRa_ss.read();
             if (*(buf-2) == '\r' && *(buf-1) == '\n') {
                 *buf = '\0';
                 return (buf - start);
