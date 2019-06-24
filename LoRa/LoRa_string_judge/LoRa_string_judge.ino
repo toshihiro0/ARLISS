@@ -29,8 +29,7 @@ void loop()
         }
     }
 }
-
-int LoRa_recv(char *buf) {
+void LoRa_recv(char *buf) {
     char *string_pointer = buf;
     int time1 = millis();
     int time2;
