@@ -25,19 +25,25 @@ int PPMMODE_GUIDED[8] = {0,0,0,0,815,0,0,0};
 
 void setup()
 {
-  	SerialMavlink.begin(57600); //RXTX from Pixhawk
   	Serial.begin(19200); //LoRaとの通信
 
   	pinMode(outpin,OUTPUT);
     
-  	request_datastream();
+    pinMode(6,OUTPUT); //LoRa
+    digitalWrite(6,HIGH);
+    pinMode(7,OUTPUT);
+    digitalWrite(7,HIGH);
+    
     EEPROM.write(0,0);
+    delay(2000);
+    Serial.print("Start\r");
+    delay(100);
 }
 
 void loop()
 {
   	int ch[8];
-	int i; //for文のループ数
+	  int i; //for文のループ数
     int plane_condition = EEPROM.read(0);
 
   	switch (plane_condition) {
@@ -54,23 +60,31 @@ void loop()
                 if(strstr(buf,"cutoff") != NULL){
                     break;
                 }
+                Serial.print("return\r");
+                delay(200);
             }
-            Serial.print("SLEEP END");
+            Serial.print("SLEEP END\r");
+            delay(200);
             EEPROM.write(0,STABILIZE_NOSEUP);
             plane_condition = STABILIZE_NOSEUP;
       	break;
 
 		case STABILIZE_NOSEUP:
+            SerialMavlink.begin(57600); //RXTX from Pixhawk
+            request_datastream();
+
 			for(i = 0;i < 8;++i){
 				ch[i] = PPMMODE_GUIDED[i];
 			}
             PPM_Transmit(ch);
             Serial.print("cutoff\r");
+            delay(200);
             for(i = 0;i < 15;++i){ //200ms*15より、 3秒間はPPMを送る
                 PPM_Transmit(ch);
             }
             //ここまでに2回目溶断は終わっているはず
-            Serial.print("STABILIZE_NOSEUPEND");
+            Serial.print("STABILIZE_NOSEUPEND\r");
+            delay(200);
             EEPROM.write(0,STABILIZE);
             plane_condition = STABILIZE;
 		break;
@@ -81,7 +95,8 @@ void loop()
       		}
             PPM_Transmit(ch);
             stabilize_func(ch); //時間による冗長系が欲しかったので、stabilize_func()を作った、これが終わったらstabilize終了
-            Serial.print("STABILIZE END");
+            Serial.print("STABILIZE END\r");
+            delay(200);
             EEPROM.write(0,GUIDED);
         	plane_condition = GUIDED;
       	break;
@@ -93,7 +108,8 @@ void loop()
             for(i= 0;i < 10;++i){
                 PPM_Transmit(ch); //Guided確定
             }
-            Serial.print("GUIDED");
+            Serial.print("GUIDED\r");
+            delay(200);
             MavLink_receive_GPS_and_send_with_LoRa();
             delay(1000); //あまり高頻度のGPS送るにしてもなぁ...(多分この後に一番最後の機構が入る。)
       	break;
@@ -226,6 +242,7 @@ void stabilize_func(int ch[8])
     while(true){
         pitch_angle = MavLink_receive_attitude();
         if(-45<pitch_angle&&pitch_angle<45){
+            Serial.print(pitch_angle);Serial.print("\r");
             return;
         }else{
             time_temp_2 = millis();
@@ -241,12 +258,14 @@ void stabilize_func(int ch[8])
 
 void LoRa_recv(int ch[8], char *buf)
 {
-    char *strint_pointer = buf;
+    delay(100);
     int time1 = millis();
     int time2;
     while(true){
         while(Serial.available() > 0){
             *buf++ = Serial.read();
+            Serial.write(*(buf-1));
+            delay(10);
             if(*(buf-1) == '\r'){
                 *buf = '\0';
                 return;
