@@ -17,15 +17,15 @@
 SoftwareSerial SerialMavlink(10, 11); //Pixhawkと接続
 
 //loopで何回も宣言するのが嫌だからグローバル宣言
-int PPMMODE_MANUAL[8] = {0,0,0,0,165,0,0,0};
-int PPMMODE_STABILIZENOSEUP[8] = {0,400,0,0,425,0,0,0}; //傾きがひどいと流れが剥離して全然効かなくなるかも、と思ったので400に抑えている。
-int PPMMODE_STABILIZE[8] = {0,0,0,0,425,0,0,0};
-int PPMMODE_GUIDED[8] = {0,0,0,0,815,0,0,0};
+int PPMMODE_MANUAL[8] = {500,500,0,500,165,500,500,0};
+int PPMMODE_STABILIZENOSEUP[8] = {500,700,0,500,425,500,500,0}; //傾きがひどいと流れが剥離して全然効かなくなるかも、と思ったので400に抑えている。
+int PPMMODE_STABILIZE[8] = {500,500,0,500,425,500,500,0};
+int PPMMODE_GUIDED[8] = {500,0,500,500,815,500,500,0};
 
 void setup()
 {
     SerialMavlink.begin(57600); //RXTX from Pixhawk
-  	Serial.begin(/*57600*/); //パソコンで見たいときはパソコン、LoRaで見たいときは以下の時間を全て変える。
+  	Serial.begin(19200); //LoRaのRX,TX
     
   	pinMode(outpin,OUTPUT);
 
@@ -70,7 +70,7 @@ void loop()
 			for(i = 0;i < 8;++i){
 				ch[i] = PPMMODE_STABILIZENOSEUP[i];
 			}
-            for(i = 0;i < 20;++i){ //200ms*20より、 4秒間はPPMを送る
+            for(i = 0;i < 150;++i){ //20ms*20より、 4秒間はPPMを送る
                 PPM_Transmit(ch);
             }
             //ここまでに2回目溶断は終わっているはず
@@ -83,7 +83,9 @@ void loop()
             for(i = 0;i < 8;++i){
         		ch[i]=PPMMODE_STABILIZE[i];
       		}
-            PPM_Transmit(ch);
+            for(i = 0;i < 10;++i){
+                PPM_Transmit(ch);
+            }
             stabilize_func(ch); //時間による冗長系が欲しかったので、stabilize_func()を作った、これが終わったらstabilize終了
             Serial.println("Stabilize END");
             EEPROM.write(0,GUIDED);
@@ -145,10 +147,10 @@ void MavLink_receive_GPS_and_send_with_LoRa()
                 {
                     mavlink_gps_raw_int_t packet;
                     mavlink_msg_gps_raw_int_decode(&msg, &packet);
-                    //Lora.print("Lat: ");Lora.println(packet.lat);
-                    //Lora.print("Long: ");Lora.println(packet.lon);
-                    //Lora.print("Alt; ");Lora.println(packet.alt);
-                    //Lora.print("Speed: ");Lora.println(packet.vel);
+                    Serial.print("Lat:");Seiral.println(packet.lat);
+                    Seiral.print("Long:");Seiral.println(packet.lon);
+                    Seiral.print("Alt:");Seiral.println(packet.alt);
+                    Seiral.print("Speed:");Seiral.println(packet.vel);
                 }
                 break;
             }
