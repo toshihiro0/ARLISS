@@ -8,30 +8,38 @@
 #define deploy_judge_pin_INPUT  
 #define deploy_judge_pin_OUTPUT 
 
+#define LoRa_sw 
+#define LoRa_rst 
+
 #define SLEEP 0
 #define MANUAL 1
 #define STABILIZE_NOSEUP 2
 #define STABILIZE 3
-#define GUIDED 4
+#define AUTO 4
 
 SoftwareSerial SerialMavlink(10, 11); //Pixhawkと接続
 
 //loopで何回も宣言するのが嫌だからグローバル宣言
-int PPMMODE_MANUAL[8] = {500,500,0,500,165,500,500,0};
-int PPMMODE_STABILIZENOSEUP[8] = {500,700,0,500,425,500,500,0}; //傾きがひどいと流れが剥離して全然効かなくなるかも、と思ったので400に抑えている。
-int PPMMODE_STABILIZE[8] = {500,500,0,500,425,500,500,0};
-int PPMMODE_GUIDED[8] = {500,0,500,500,815,500,500,0};
+int PPMMODE_MANUAL[8] = {500,500,0,500,165,500,0,0};
+int PPMMODE_STABILIZENOSEUP[8] = {500,100,0,500,425,500,0,0}; //100側が機首上げ
+int PPMMODE_STABILIZE[8] = {500,500,0,500,425,500,0,0}; //throttleは入れない。
+int PPMMODE_AUTO[8] = {500,500,0,500,815,500,0,0};
 
 void setup()
 {
     SerialMavlink.begin(57600); //RXTX from Pixhawk
-  	Serial.begin(19200); //LoRaのRX,TX
+  	Serial.begin(19200);
     
   	pinMode(outpin,OUTPUT);
 
     pinMode(deploy_judge_pin_INPUT,INPUT_PULLUP);
     pinMode(deploy_judge_pin_OUTPUT,OUTPUT);
     digitalWrite(deploy_judge_pin_OUTPUT,LOW);
+
+    pinMode(LoRa_sw,OUTPUT);
+    digitalWrite(LoRa_sw,HIGH);
+    pinMode(LoRa_rst,OUTPUT);
+    digitalWrite(LoRa_rst,HIGH);
     
   	request_datastream();
     EEPROM.write(0,0);
@@ -70,7 +78,7 @@ void loop()
 			for(i = 0;i < 8;++i){
 				ch[i] = PPMMODE_STABILIZENOSEUP[i];
 			}
-            for(i = 0;i < 150;++i){ //20ms*20より、 4秒間はPPMを送る
+            for(i = 0;i < 150;++i){ //20ms*150より、 3秒間はPPMを送る
                 PPM_Transmit(ch);
             }
             //ここまでに2回目溶断は終わっているはず
@@ -88,18 +96,17 @@ void loop()
             }
             stabilize_func(ch); //時間による冗長系が欲しかったので、stabilize_func()を作った、これが終わったらstabilize終了
             Serial.println("Stabilize END");
-            EEPROM.write(0,GUIDED);
-        	plane_condition = GUIDED;
-            
+            EEPROM.write(0,AUTO);
+        	plane_condition = AUTO;
       	break;
 
-    	case GUIDED://離陸判定後
-            Serial.println("GUIDED start");
+    	case AUTO://離陸判定後
+            Serial.println("AUTO start");
       		for(i=0;i<8;i++){
-        		ch[i] = PPMMODE_GUIDED[i];
+        		ch[i] = PPMMODE_AUTO[i];
       		}
             for(i= 0;i < 10;++i){
-                PPM_Transmit(ch); //Guided確定
+                PPM_Transmit(ch); //AUTO確定
             }
             MavLink_receive_GPS_and_send_with_LoRa();
             delay(1000); //あまり高頻度のGPS送るにしてもなぁ...(多分この後に一番最後の機構が入る。)
@@ -147,10 +154,10 @@ void MavLink_receive_GPS_and_send_with_LoRa()
                 {
                     mavlink_gps_raw_int_t packet;
                     mavlink_msg_gps_raw_int_decode(&msg, &packet);
-                    Serial.print("Lat:");Seiral.println(packet.lat);
-                    Seiral.print("Long:");Seiral.println(packet.lon);
-                    Seiral.print("Alt:");Seiral.println(packet.alt);
-                    Seiral.print("Speed:");Seiral.println(packet.vel);
+                    Serial.print("Lat:");delay(100);Serial.println(packet.lat);delay(100);
+                    Serial.print("Long:");delay(100);Serial.println(packet.lon);delay(100);
+                    Serial.print("Alt:");delay(100);Serial.println(packet.alt);delay(100);
+                    Serial.print("Speed:");delay(100);Serial.println(packet.vel);delay(100);
                 }
                 break;
             }
