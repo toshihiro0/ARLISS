@@ -3,7 +3,7 @@
 #include <EEPROM.h>
 #include <math.h>
 
-#define outpin 13 //PPM
+#define outpin 18 //PPM
 
 #define LoRa_sw 
 #define LoRa_rst
@@ -12,12 +12,12 @@
 #define STABILIZE 3
 #define DEEP_STALL 4
 
-SoftwareSerial SerialMavlink(10, 11); //Pixhawkと接続
+SoftwareSerial SerialMavlink(17, 16); //Pixhawkと接続
 
 //loopで何回も宣言するのが嫌だからグローバル宣言
-int PPMMODE_STABILIZENOSEUP[8] = {500,100,0,500,425,500,0,0}; //100側が機首上げ
-int PPMMODE_STABILIZE[8] = {500,500,900,500,425,500,0,0}; //throttle全開
-int PPMMODE_DEEPSTALL[8] = {500,100,0,500,425,500,0,0};
+int PPMMODE_STABILIZENOSEUP[8] = {500,100,0,500,425,500,500,0}; //100側が機首上げ
+int PPMMODE_STABILIZE[8] = {500,500,900,500,425,500,500,0}; //throttle全開
+int PPMMODE_DEEPSTALL[8] = {500,100,0,500,425,500,500,0};
 
 void setup()
 {
