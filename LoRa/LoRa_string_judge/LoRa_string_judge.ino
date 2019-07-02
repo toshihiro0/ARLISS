@@ -9,7 +9,7 @@ void setup()
     pinMode(7,OUTPUT);
     digitalWrite(6,HIGH);
     digitalWrite(7,HIGH);
-    pinMode(2,OUTPUT);
+    pinMode(2,OUTPUT); //LEDの点滅でコード開始を確認
     digitalWrite(2,HIGH);
     delay(1000);
     digitalWrite(2,LOW);
