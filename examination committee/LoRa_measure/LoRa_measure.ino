@@ -9,8 +9,8 @@
 #define LoRa_sw 6 //LoRaの電源ピン
 #define LoRa_rst 7 //LoRaのRstピン
 
-#define airpressure_on_the_ground 100434.000 //高度計算用の地上の気圧(Pa)
-static const float temperature_on_the_ground = 25.25; //高度計算用の地上の気温(℃)
+#define airpressure_on_the_ground 100770.000 //高度計算用の地上の気圧(Pa)
+static const float temperature_on_the_ground = 26.60; //高度計算用の地上の気温(℃)
 static const float temperature_correction = 273.15;
 
 BME280 air_pressure_sensor; //BME280
