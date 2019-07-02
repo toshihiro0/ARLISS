@@ -55,11 +55,11 @@ void setup()
 void loop()
 {
     float height; //高度判定
-    delay(1200);
-    Serial.print("The program has started.\r");
-    delay(5000);
-    Serial.print("The process has started.\r");
-    cds(); //明暗の判定
+    //delay(1200);
+    //Serial.print("The program has started.\r");
+    //delay(5000);
+    //Serial.print("The process has started.\r");
+    //cds(); //明暗の判定
     //digitalWrite(LoRa_sw,HIGH); //ロケットから放出されたので、通信を開始してOK
     //Serial.begin(19200); //通信開始には多少待つ必要があるみたいだけど...
     height = heightjudge(); //高度判定
