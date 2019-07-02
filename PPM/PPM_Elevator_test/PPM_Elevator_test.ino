@@ -1,4 +1,4 @@
-#define outpin 13
+#define outpin 18
 
 void setup()
 {
@@ -7,9 +7,13 @@ void setup()
 
 void loop()
 {
-    int ch[8] = {500,100,0,500,165,0,0,0}; //下限が1100(こっちが機首上げ),中立が1500,上限1900
+    int ch[8] = {500,500,0,500,165,0,0,0};
     int i,a = 1;
     while(true){
+        if(ch[1] == 900 || ch[1] == 100){
+          a *= -1;
+        }
+        ch[1] += a*100;
         for(i = 0;i < 10;++i){
             PPM_Transmit(ch);
         }

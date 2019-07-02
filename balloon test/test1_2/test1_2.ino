@@ -3,7 +3,7 @@
 #include <EEPROM.h>
 #include <math.h>
 
-#define outpin 13 //PPM
+#define outpin 18 //PPM
 
 #define LoRa_sw
 #define LoRa_rst 
@@ -12,12 +12,12 @@
 #define STABILIZE 3
 #define AUTO 4
 
-SoftwareSerial SerialMavlink(10, 11); //Pixhawkと接続
+SoftwareSerial SerialMavlink(17,16); //Pixhawkと接続
 
 //loopで何回も宣言するのが嫌だからグローバル宣言
-int PPMMODE_STABILIZENOSEUP[8] = {500,100,0,500,425,500,0,0}; //100側が機首上げ
-int PPMMODE_STABILIZE[8] = {500,500,900,500,425,500,0,0};
-int PPMMODE_AUTO[8] = {500,500,0,500,815,500,0,0};
+int PPMMODE_STABILIZENOSEUP[8] = {500,100,0,500,425,500,500,0}; //100側が機首上げ
+int PPMMODE_STABILIZE[8] = {500,500,900,500,425,500,500,0};
+int PPMMODE_AUTO[8] = {500,500,0,500,815,500,500,0};
 
 void setup()
 {
@@ -32,7 +32,7 @@ void setup()
     digitalWrite(LoRa_rst,HIGH);
 
   	request_datastream();
-    EEPROM.write(0,0);
+    EEPROM.write(0,2);
 }
 
 void loop()
@@ -60,7 +60,7 @@ void loop()
             for(i = 0;i < 8;++i){
         		ch[i]=PPMMODE_STABILIZE[i];
       		}
-            for(i = 0;i < 10;++i){
+            for(i = 0;i < 1000;++i){
                 PPM_Transmit(ch);
             }
             Serial.println("Stabilize END");
@@ -203,8 +203,6 @@ void PPM_Transmit(int ch[8])
 void stabilize_func(int ch[8])
 {
     float pitch_angle;
-    int time_temp_1 = millis();
-    int time_temp_2;
     while(true){
         pitch_angle = MavLink_receive_attitude();
         Serial.println(pitch_angle);

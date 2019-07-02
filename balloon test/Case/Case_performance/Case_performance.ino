@@ -1,6 +1,7 @@
 #include <SoftwareSerial.h>
 #include <SparkFunBME280.h>
 #include <TinyGPS++.h>
+#include <EEPROM.h>
 
 //#defineとstatic const のどちらが良いか僕にはわからない。以下ピン設定
 //#defineのがメモリを食わないので、#defineにしておきます
@@ -16,10 +17,9 @@
 #define LoRa_sw 6 //LoRaの電源ピン
 #define LoRa_rst 7 //LoRaのRstピン
 
-static const float airpressure_on_the_ground = 101540.265; //高度計算用の地上の気圧(Pa)
-static const float temperature_on_the_ground = 23.82; //高度計算用の地上の気温(℃)
-static const float release_height = 2000; //切り離し高度(m)
-
+static const float airpressure_on_the_ground = 100380.000; //高度計算用の地上の気圧(Pa)
+static const float temperature_on_the_ground = 21.20; //高度計算用の地上の気温(℃)
+static const float release_height = 2000; //切り離し高度(
 SoftwareSerial GPS_UART(5,4); //RX,TX,GPS通信用
 BME280 air_pressure_sensor; //気圧センサBME280
 TinyGPSPlus gps; //GPS
@@ -50,6 +50,7 @@ void setup()
     GPS_UART.begin(9600); //GPSとの通信
 
     Serial.begin(19200); //Loraとの通信
+    delay(300000);
 }
 
 void loop()
@@ -62,7 +63,9 @@ void loop()
     //cds(); //明暗の判定
     //digitalWrite(LoRa_sw,HIGH); //ロケットから放出されたので、通信を開始してOK
     //Serial.begin(19200); //通信開始には多少待つ必要があるみたいだけど...
+    ////LoRa_cutoff();
     height = heightjudge(); //高度判定
+    EEPROM.write(0,height);
     nichromecut(); //ニクロム線カット
     senttoLora(height);
     gps_transmission(); //LoRaからGPS情報送信、ずっとこの中
@@ -109,7 +112,7 @@ float heightjudge()
         pressure = air_pressure_sensor.readFloatPressure();
         height = (1-pow(pressure/airpressure_on_the_ground,0.19035714))/0.0065*(temperature_on_the_ground+temperature_correction);
         if(height <= release_height){
-            air_pressure_sensor.setMode(MODE_SLEEP); //気圧センサスリープモード(電源消費を抑える)
+            //air_pressure_sensor.setMode(MODE_SLEEP); //気圧センサスリープモード(電源消費を抑える)
             return height;
         }else{
             delay(10);
@@ -121,11 +124,11 @@ float heightjudge()
 void nichromecut()
 {
     digitalWrite(nichrome_pin_1,HIGH);
-    delay(3000);
+    delay(2000);
     digitalWrite(nichrome_pin_1,LOW);
-    delay(10); //とりあえず
+    delay(100); //とりあえず
     digitalWrite(nichrome_pin_2,HIGH);
-    delay(3000);
+    delay(2000);
     digitalWrite(nichrome_pin_2,LOW);
     return;
 }
@@ -169,4 +172,36 @@ void LoRa_reset()
     digitalWrite(LoRa_rst,LOW);
     delay(1); //1msで十分
     digitalWrite(LoRa_rst,HIGH);
+}
+
+void LoRa_cutoff()
+{
+    while(true){
+        char buf[128];
+        LoRa_recv(buf);
+        Serial.write("return");
+        if(strstr(buf,"measure") != NULL){
+            float height = heightjudge();
+            Serial.println(height);
+            continue;
+        }
+        if(strstr(buf,"cutoff")!= NULL){
+            Serial.write("kakunin");
+            break;
+        }
+    }
+}
+
+void LoRa_recv(char *buf) {
+    char *string_pointer = buf;
+    while (true) {
+        while (Serial.available() > 0) {
+            *buf++ = Serial.read();
+            Serial.write(*(buf-1));
+            if (*(buf-1) == '\r'){
+                *buf = '\0';
+                return;
+            }
+        }
+    }
 }
