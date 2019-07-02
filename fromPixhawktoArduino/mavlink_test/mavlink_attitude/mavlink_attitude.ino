@@ -1,8 +1,8 @@
 #include <mavlink.h>
 #include <SoftwareSerial.h>
  
-#define RXpin 10
-#define TXpin 11
+#define RXpin 17
+#define TXpin 16
 #define M_PI 3.14159
 SoftwareSerial Serial1(RXpin, TXpin); // sets up serial communication on pins 3 and 2
  
@@ -16,8 +16,6 @@ void setup()
   delay(1200);
  
 }
-
-int time1 = 0,time2;
  
 void loop() {
  
