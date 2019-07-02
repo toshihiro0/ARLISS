@@ -1,5 +1,5 @@
 #define RC_pin 18 //PPM
-#define button_pin
+#define button_pin 14//A0
 
 void setup()
 {
@@ -15,9 +15,9 @@ void loop()
     //エレベーター上げるが1900でエレベーター下げるが1100
     //ラダーは知らん
     int PPMMODE_Wait[8] = {500,500,0,500,100,500,500,0};
-    int PPMMODE_Arm[8] = {500,500,0,900,100,900,500,0}; //とりあえずアーム900にしてるけどこれであってんか?
+    int PPMMODE_Arm[8] = {500,500,0,1000,100,1000,500,0}; //アームはラダー900では足りない、1000必要
     int PPMMODE_STABILIZE[8] = {500,500,900,500,425,500,500,0}; //throttle全開
-    int PPMMODE_Auto[8] = {500,500,0,500,850,500,500,0} //AutoにThrottleはいらないはず
+    int PPMMODE_Auto[8] = {500,500,0,500,850,500,500,0}; //AutoにThrottleはいらないはず
     int PPMMODE_DEEPSTALL[8] = {500,100,0,500,425,500,500,0};   
 
     while(true){
