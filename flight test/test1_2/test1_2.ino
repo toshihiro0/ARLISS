@@ -1,5 +1,5 @@
 #define RC_pin 18 //PPM
-#define button_pin
+#define button_pin 14 //A0
 
 void setup()
 {
