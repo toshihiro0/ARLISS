@@ -10,7 +10,7 @@ void setup()
 void loop()
 {
     int i; //ループの数
-    int time1,time2;
+    long time1,time2;
     //int PPMMODE_example[8] = {A,E,T,R,C,R,A,?}
     //エレベーター上げるが1900でエレベーター下げるが1100
     //ラダーは知らん
