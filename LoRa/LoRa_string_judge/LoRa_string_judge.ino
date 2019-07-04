@@ -23,21 +23,25 @@ void loop()
     while(true){
         char buf[128];
         LoRa_recv(buf);
-        Serial.write("return");
+        LoRa.print("return\r");
+        delay(400);
         if(strstr(buf,"cutoff")!= NULL){
-            Serial.write("kakunin");
+            LoRa.print("kakunin\r");
+            delay(100);
         }
     }
 }
-void LoRa_recv(char *buf) {
+void LoRa_recv(char *buf)
+{
     char *string_pointer = buf;
     int time1 = millis();
     int time2;
     while (true) {
         while (LoRa.available() > 0) {
             *buf++ = LoRa.read();
-            Serial.write(*(buf-1));
-            if (*(buf-1) == '\r'){
+            if(*(buf-3) == 'O' && *(buf-2) == 'K' && *(buf-1) == '\r'){
+                continue;
+            }else if (*(buf-1) == '\r'){
                 *buf = '\0';
                 return;
             }
