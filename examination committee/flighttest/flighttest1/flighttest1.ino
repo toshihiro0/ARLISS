@@ -110,9 +110,10 @@ void loop()
             for(i=0;i<8;i++){
         		ch[i] = PPMMODE_DEEPSTALL[i];
       		}
-            while(true){ ずっと
+            while(true){ //ずっと
                 PPM_Transmit(ch); //AUTO確定
             }
+        break;
 
     	default:
       	break;

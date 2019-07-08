@@ -21,11 +21,6 @@ void setup()
     SerialMavlink.begin(57600); //RXTX from Pixhawk
     
   	pinMode(outpin,OUTPUT);
-    
-    pinMode(LoRa_sw,OUTPUT);
-    digitalWrite(LoRa_sw,HIGH);
-    pinMode(LoRa_rst,OUTPUT);
-    digitalWrite(LoRa_rst,HIGH);
 
   	request_datastream();
     EEPROM.write(0,2);
@@ -69,6 +64,7 @@ void loop()
             while(true){
                 PPM_Transmit(ch);
             }
+        break;
 
     	default:
       	break;
