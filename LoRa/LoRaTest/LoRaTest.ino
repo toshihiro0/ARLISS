@@ -19,5 +19,4 @@ void loop()
    if(Serial.available()){
       LoRa_ss.write(Serial.read());//入力されたデータを送信
    }
-   delay(1000);
 }
