@@ -12,18 +12,24 @@
 SoftwareSerial SerialMavlink(17,16); //Pixhawkと接続
 
 //loopで何回も宣言するのが嫌だからグローバル宣言
-int PPMMODE_STABILIZENOSEUP[8] = {500,900,0,500,425,500,500,0}; //900側が機首上げ
+int PPMMODE_Arm[8] = {500,500,0,1000,100,1000,500,0}; //アームはラダー900では足りない、1000必要
+int PPMMODE_STABILIZENOSEUP[8] = {500,100,0,500,425,500,500,0}; //E100側が機首上げ
 int PPMMODE_AUTO[8] = {500,500,0,500,815,500,500,0};
-int PPMMODE_DEEPSTALL[8] = {900,900,0,500,425,500,900,0}; //エルロンもすべて上げる
+int PPMMODE_DEEPSTALL[8] = {900,100,0,500,425,500,900,0}; //エルロンもすべて上げる
 
 void setup()
 {
+    pinMode(14,INPUT_PULLUP);
+    while(digitalRead(14) == HIGH){}
     SerialMavlink.begin(57600); //RXTX from Pixhawk
     
   	pinMode(outpin,OUTPUT);
 
   	request_datastream();
     EEPROM.write(0,2);
+    for(int i = 0;i <= 300;++i){
+        PPM_Transmit(PPMMODE_Arm);
+    }
 }
 
 void loop()
@@ -194,6 +200,9 @@ void stabilize_func(int ch[8])
         Serial.println(pitch_angle);
         if(-45<pitch_angle && pitch_angle<45){
             return;
+        }else{
+            PPM_Transmit(ch); //stabilizeを続けるためにPPMを送る。
+            continue;
         }
     } //breakは無いが、returnで戻るようになっている。
 }
