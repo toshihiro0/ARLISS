@@ -14,8 +14,6 @@ void setup()
     digitalWrite(LoRa_sw,HIGH); //ここを変えること！！！
     pinMode(LoRa_rst,OUTPUT);
     digitalWrite(LoRa_rst,HIGH);
-
-    //Serial.begin(19200);
     Serial.begin(9600); //GPSとの通信
     LoRa.begin(19200); //Loraとの通信
     delay(1200);
