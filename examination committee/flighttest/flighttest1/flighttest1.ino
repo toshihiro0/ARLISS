@@ -19,10 +19,10 @@ SoftwareSerial SerialMavlink(17,16); //Pixhawkと接続
 //loopで何回も宣言するのが嫌だからグローバル宣言
 int PPMMODE_Arm[8] = {500,500,0,1000,100,1000,500,0}; //アームはラダー900では足りない、1000必要
 int PPMMODE_MANUAL[8] = {500,500,0,500,165,500,500,0};
-int PPMMODE_STABILIZENOSEUP[8] = {500,100,0,500,425,500,500,0}; //100側が機首上げ
-int PPMMODE_STABILIZE[8] = {500,500,900,500,425,500,500,0}; 
+int PPMMODE_STABILIZENOSEUP[8] = {500,100,0,500,425,500,500,0}; //100側が機首上げ?
+int PPMMODE_STABILIZE[8] = {500,500,300,500,425,500,500,0}; 
 int PPMMODE_AUTO[8] = {500,500,0,500,815,500,500,0};
-int PPMMODE_DEEPSTALL[8] = {900,100,0,500,425,500,100,0}; //エルロンもすべて上げる
+int PPMMODE_DEEPSTALL[8] = {900,900,0,500,425,500,900,0}; //エルロンもすべて上げる
 
 void setup()
 {
@@ -52,7 +52,7 @@ void loop()
 {
   	int ch[8];
 
-	  int i; //for文のループ数
+	  int i,j; //for文のループ数
     int plane_condition = EEPROM.read(0);
 
   	switch (plane_condition) {
