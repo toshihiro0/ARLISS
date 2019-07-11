@@ -10,7 +10,7 @@ void setup()
 
 void loop()
 {
-    int i; //ループの数
+    int i,j; //ループの数
     long time1,time2;
     //int PPMMODE_example[8] = {A,E,T,R,C,R,A,?}
     //エレベーター上げるが1900でエレベーター下げるが1100
@@ -20,7 +20,7 @@ void loop()
     int PPMMODE_STABILIZE[8] = {500,500,900,500,425,500,500,0}; //throttle全開
     int PPMMODE_STABILIZE_rudder_left[8] = {500,500,900,100,425,100,500,0}; //左にラダーを切る
     int PPMMODE_STABILIZE_rudder_right[8] = {500,500,900,900,425,900,500,0}; //右にラダーを切る
-    int PPMMODE_DEEPSTALL[8] = {500,100,0,500,425,500,500,0};   
+    int PPMMODE_DEEPSTALL[8] = {500,900,0,500,425,500,500,0};   //値はその都度設定
 
     while(true){
         for(i = 0;i < 10;++i){ //Manual確定
@@ -51,18 +51,11 @@ void loop()
         if((time2-time1) >= 2000){
             continue;
         }else{
-            for(i = 0;i < 10;++i){ //200ms
-                PPM_Transmit(PPMMODE_STABILIZE);
+            for(j = 3;j <= 9;++j){
+                for(i = 0;i < 100;++i){ //ちょっとずつ上げる
+                    PPM_Transmit(PPMMODE_STABILIZE);
+                }
             }
-        }
-
-        while(digitalRead(button_pin) == HIGH){}
-        time1 = millis();
-        while(digitalRead(button_pin) == LOW){} //ボタン押されている間待っている。
-        time2 = millis();
-        if((time2-time1) >= 2000){
-            continue;
-        }else{
             break;
         }
     }
