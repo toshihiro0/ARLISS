@@ -1,5 +1,9 @@
+#include <SoftwareSerial.h>
+
 #define LoRa_sw 6
 #define LoRa_rst 7
+
+SoftwareSerial LoRa(8,9);
 
 void setup()
 {
@@ -7,16 +11,16 @@ void setup()
    digitalWrite(LoRa_sw,HIGH);
    pinMode(LoRa_rst,OUTPUT);
    digitalWrite(LoRa_rst,HIGH);
-   Serial.begin(19200);
+   LoRa.begin(19200);
    delay(2000); //LoRa起動待ち
 }
 
 int number = 0;
 void loop() 
 {
-  Serial.print("hogehoge");
-  Serial.print(number);
-  Serial.print("\r");
+  LoRa.print("hogehoge");
+  LoRa.print(number);
+  LoRa.print("\r");
 	++number;
 	delay(1000);
 }

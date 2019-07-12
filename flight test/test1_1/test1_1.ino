@@ -5,20 +5,21 @@ void setup()
 {
   	pinMode(RC_pin,OUTPUT);
     pinMode(button_pin,INPUT_PULLUP);
+    Serial.begin(57600);
 }
 
 void loop()
 {
-    int i; //ループの数
+    int i,j; //ループの数
     long time1,time2;
     //int PPMMODE_example[8] = {A,E,T,R,C,R,A,?}
     //エレベーター上げるが1900でエレベーター下げるが1100
     //ラダーは知らん
     int PPMMODE_Wait[8] = {500,500,0,500,100,500,500,0};
     int PPMMODE_Arm[8] = {500,500,0,1000,100,1000,500,0}; //アームはラダー900では足りない、1000必要
-    int PPMMODE_STABILIZE[8] = {500,500,900,500,425,500,500,0}; //throttle全開
+    int PPMMODE_STABILIZE[8] = {500,500,200,500,425,500,500,0}; //throttle全開
     int PPMMODE_Auto[8] = {500,500,0,500,850,500,500,0}; //AutoにThrottleはいらないはず
-    int PPMMODE_DEEPSTALL[8] = {500,100,0,500,425,500,500,0};   
+    int PPMMODE_DEEPSTALL[8] = {500,900,0,500,425,500,500,0};   //Elevatorの値は現地で調整、エルロンは弄らない
 
     while(true){
         for(i = 0;i < 10;++i){ //Manual確定
@@ -49,26 +50,22 @@ void loop()
         if((time2-time1) >= 2000){
             continue;
         }else{
-            for(i = 0;i < 10;++i){ //200ms
-                PPM_Transmit(PPMMODE_STABILIZE);
+            for(j = 3;j <= 9;++j){
+                PPMMODE_STABILIZE[2] = j*100;
+                for(i = 0;i < 100;++i){ //ちょっとずつ上げる
+                    PPM_Transmit(PPMMODE_STABILIZE);
+                }
             }
-        }
-
-        while(digitalRead(button_pin) == HIGH){}
-        time1 = millis();
-        while(digitalRead(button_pin) == LOW){} //ボタン押されている間待っている。
-        time2 = millis();
-        if((time2-time1) >= 2000){
-            continue;
-        }else{
-            break;
+            break;  
         }
     }
+    Serial.write("kaishi\n");
 
-    for(i = 0;i < 500;++i){ //10*1000/20 = 500 //10s,stabilize
+    for(i = 0;i < 400;++i){ //400*20/1000 = 8 //8s,stabilize
         PPM_Transmit(PPMMODE_STABILIZE);
     }
-    for(i = 0;i < 1000;++i){ //20*1000/20 = 1000 //20s,auto
+    Serial.write("end");
+    for(i = 0;i < 500;++i){ //10*1000/20 = 500 //10s,auto
         PPM_Transmit(PPMMODE_Auto);
     }
     while(true){

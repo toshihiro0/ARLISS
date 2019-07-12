@@ -4,23 +4,19 @@
 #define RXpin 17
 #define TXpin 16
 #define M_PI 3.14159
-SoftwareSerial Serial1(RXpin, TXpin); // sets up serial communication on pins 3 and 2
+SoftwareSerial SerialMavlink(RXpin, TXpin); // sets up serial communication on pins 3 and 2
  
 void setup()
 {
-  Serial1.begin(57600); //RXTX from Pixhawk (Port 19,18 Arduino Mega)
-  Serial.begin(19200); //Main serial port for console output
+  SerialMavlink.begin(57600); //RXTX from Pixhawk (Port 19,18 Arduino Mega)
+  Serial.begin(57600); //Main serial port for console output
  
   request_datastream();
-
-  delay(1200);
- 
 }
  
-void loop() {
- 
-MavLink_receive();
- 
+void loop()
+{
+    MavLink_receive();
 }
  
 //function called by arduino to read any MAVlink messages sent by serial communication from flight controller to arduino
@@ -29,9 +25,9 @@ void MavLink_receive()
   mavlink_message_t msg;
   mavlink_status_t status;
  
-  while(Serial1.available())
+  while(SerialMavlink.available())
   {
-    uint8_t c= Serial1.read();
+    uint8_t c= SerialMavlink.read();
  
     //Get new message
     if(mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status))
@@ -47,9 +43,9 @@ void MavLink_receive()
         mavlink_msg_attitude_decode(&msg, &packet);
         //Serial.print("msg.msgid: ");Serial.print(msg.msgid);Serial.print("\r");delay(200);
         //Serial.print("MAVLINK_MSG_ID_ATTITUDE: ");Serial.println(MAVLINK_MSG_ID_ATTITUDE);
-        Serial.print("roll:");delay(100);Serial.print(packet.roll/M_PI*180.0);delay(100);Serial.print("\r");delay(300);
-        Serial.print("pitch:");delay(100);Serial.print(packet.pitch/M_PI*180.0);delay(100);Serial.print("\r");delay(300);
-        Serial.print("yaw:");delay(100);Serial.print(packet.yaw/M_PI*180.0);delay(100);Serial.print("\r");delay(300);
+        Serial.print("roll:");delay(100);Serial.print(packet.roll/M_PI*180.0);delay(100);Serial.print("\n");delay(300);
+        Serial.print("pitch:");delay(100);Serial.print(packet.pitch/M_PI*180.0);delay(100);Serial.print("\n");delay(300);
+        Serial.print("yaw:");delay(100);Serial.print(packet.yaw/M_PI*180.0);delay(100);Serial.print("\n");delay(300);
         }break;
       }
     }
@@ -95,5 +91,5 @@ void request_datastream() {
   mavlink_msg_request_data_stream_pack(_system_id, _component_id, &msg, _target_system, _target_component, _req_stream_id, _req_message_rate, _start_stop);
   uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);  // Send the message (.write sends as bytes)
  
-  Serial1.write(buf, len); //Write data to serial port
+  SerialMavlink.write(buf, len); //Write data to serial port
 }

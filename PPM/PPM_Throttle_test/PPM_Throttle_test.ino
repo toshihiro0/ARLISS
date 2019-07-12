@@ -7,20 +7,20 @@ void setup()
 
 void loop()
 {
-    /*int ch[8] = {500,500,0,500,165,0,0,0};
-    int i,a = 1;
+    int i,j;
+    int ch[8] = {500,500,300,500,165,500,500,0};
+    for(i = 3;i <= 9;++i){
+                ch[2] = i*100;
+                for(j = 0;j < 14;++j){
+                    PPM_Transmit(ch); //7*14*20 = 1960で2秒間かけてプロペラ回転
+                }
+            }
+    for(i = 0;i < 100;++i){ //2*1000/20 = 100
+        PPM_Transmit(ch);
+    }
+    ch[2] = 0;
     while(true){
-        if(ch[1] == 900 || ch[1] == 100){
-          a *= -1;
-        }
-        ch[1] += a*100;
-        for(i = 0;i < 10;++i){
-            PPM_Transmit(ch);
-        }
-    }*/
-    int ch[8] = {500,900,0,500,165,500,500,0};
-    while(true){
-      PPM_Transmit(ch);
+        PPM_Transmit(ch);
     }
 }
 
