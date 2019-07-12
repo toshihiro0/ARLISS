@@ -18,7 +18,7 @@ void loop()
             PPM_Transmit(ch);
         }
     }*/
-    int ch[8] = {100,900,0,500,165,500,100,0};
+    int ch[8] = {500,900,0,500,165,500,500,0};
     while(true){
       PPM_Transmit(ch);
     }
