@@ -62,7 +62,7 @@ void loop()
       		}
             while(true){
                 if(digitalRead(deploy_judge_pin_INPUT) == HIGH){
-                    digitalWrite(deploy_judge_pin_OUTPUT,HIGH);
+                    digitalWrite(deploy_judge_pin_OUTPUT ,HIGH);
                     EEPROM.write(0,STABILIZE_NOSEUP); //再起動しても大丈夫なように、先に書き込んでおきたい
         		    plane_condition = STABILIZE_NOSEUP;
                     Serial.println("SLEEP END");
