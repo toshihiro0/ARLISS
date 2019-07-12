@@ -16,10 +16,10 @@ int EEPROM_Address = 1;
 
 //loopで何回も宣言するのが嫌だからグローバル宣言
 int PPMMODE_Arm[8] = {500,500,0,1000,100,1000,500,0}; //アームはラダー900では足りない、1000必要
-int PPMMODE_STABILIZENOSEUP[8] = {500,100,0,500,425,500,500,0}; //E100側が機首上げ
-int PPMMODE_STABILIZE[8] = {500,500,300,500,425,500,500,0};
+int PPMMODE_STABILIZENOSEUP[8] = {500,900,0,500,425,500,500,0}; //E900側が機首上げ
+int PPMMODE_STABILIZE[8] = {500,500,300,500,425,500,500,0}; //徐々に加速
 int PPMMODE_AUTO[8] = {500,500,0,500,815,500,500,0}; //Auto飛行
-int PPMMODE_DEEPSTALL[8] = {500,100,0,500,425,500,500,0}; //エルロンもすべて上げる
+int PPMMODE_DEEPSTALL[8] = {500,900,0,500,425,500,500,0}; //900側が機首上げ
 
 void setup()
 {
@@ -43,10 +43,13 @@ void loop()
 	int i,j; //for文のループ数
     int plane_condition = EEPROM.read(0);
 
-  	switch (plane_condition) {
+  	switch (plane_condition){
+        
 		case STABILIZE_NOSEUP:
-            EEPROM.write(EEPROM_Address,2);
+
+            EEPROM.write(EEPROM_Address,2); //ログ残し用
             ++EEPROM_Address;
+
 			for(i = 0;i < 8;++i){
 				ch[i] = PPMMODE_STABILIZENOSEUP[i];
 			}
@@ -59,46 +62,56 @@ void loop()
 		break;
 
         case STABILIZE:
-            EEPROM.write(EEPROM_Address,3);
+
+            EEPROM.write(EEPROM_Address,3); //ログ残し用
             ++EEPROM_Address;
+
             for(i = 3;i <= 9;++i){
                 PPMMODE_STABILIZE[2] = i*100; 
                 for(j = 0;j < 14;++j){
                     PPM_Transmit(PPMMODE_STABILIZE);
                 }
             }
+
             for(i=0;i<8;i++){
         		ch[i] = PPMMODE_STABILIZE[i];
       		}
             for(i = 0;i < 500;++i){ //10*1000/20 = 500より、10秒間Stablizeで加速する。
                 PPM_Transmit(ch);
             }
-            EEPROM.write(0,AUTO);
+
+            EEPROM.write(0,AUTO); //次に遷移
             plane_condition = AUTO;
+
         break;
 
     	case AUTO://離陸判定後
-            EEPROM.write(EEPROM_Address,4);
+            EEPROM.write(EEPROM_Address,4); //ログ残し用
             ++EEPROM_Address;
-      		for(i=0;i<8;i++){
+
+      		for(i=0;i<8;i++){ //モード確定
         		ch[i] = PPMMODE_AUTO[i];
       		}
             for(i= 0;i < 6000;++i){ //2分間、だから2*60*1000/20 = 6000
                 PPM_Transmit(ch); //AUTO確定
             }
-            EEPROM.write(0,DEEP_STALL);
+
+            EEPROM.write(0,DEEP_STALL); //次に遷移
             plane_condition = DEEP_STALL;
+
       	break;
         
         case DEEP_STALL:
-            EEPROM.write(EEPROM_Address,5);
+            EEPROM.write(EEPROM_Address,5); //ログ残し用
             ++EEPROM_Address;
-            for(i = 0;i < 9;++i){
+
+            for(i = 0;i < 9;++i){ //次に遷移
                 ch[i] = PPMMODE_DEEPSTALL[i];
             }
             while(true){
                 PPM_Transmit(ch);
             }
+
         break;
 
     	default:

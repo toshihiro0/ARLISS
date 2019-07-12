@@ -21,10 +21,10 @@ int EEPROM_Address = 1;
 //loopで何回も宣言するのが嫌だからグローバル宣言
 int PPMMODE_Arm[8] = {500,500,0,1000,100,1000,500,0}; //アームはラダー900では足りない、1000必要
 int PPMMODE_MANUAL[8] = {500,500,0,500,165,500,500,0};
-int PPMMODE_STABILIZENOSEUP[8] = {500,100,100,500,425,500,500,0}; //100側が機首上げ?
-int PPMMODE_STABILIZE[8] = {500,500,300,500,425,500,500,0}; 
+int PPMMODE_STABILIZENOSEUP[8] = {500,900,100,500,425,500,500,0}; //900側が機首上げ
+int PPMMODE_STABILIZE[8] = {500,500,300,500,425,500,500,0}; //300から徐々に上げる
 int PPMMODE_AUTO[8] = {500,500,0,500,815,500,500,0};
-int PPMMODE_DEEPSTALL[8] = {500,900,0,500,425,500,500,0}; //エルロンもすべて上げる
+int PPMMODE_DEEPSTALL[8] = {500,900,0,500,425,500,500,0}; //900側がエレベーター上げ
 
 void setup()
 {
@@ -44,7 +44,7 @@ void setup()
     */
   	request_datastream();
     EEPROM.write(0,0);
-    for(int i = 0;i <= 300;++i){
+    for(int i = 0;i <= 300;++i){ //アーム
         PPM_Transmit(PPMMODE_Arm);
     }
 }
@@ -54,18 +54,21 @@ void loop()
   	int ch[8];
 
 	int i,j; //for文のループ数
-    int plane_condition = EEPROM.read(0);
+    int plane_condition = EEPROM.read(0); //再起動用に読み出し
 
   	switch (plane_condition) {
     	case SLEEP: //溶断開始判定を受け取るまで
-            EEPROM.write(EEPROM_Address,0);
+
+            EEPROM.write(EEPROM_Address,0); //ログ残し用
             ++EEPROM_Address;
-      		for(i = 0;i < 8;++i){
-        		ch[i]=PPMMODE_MANUAL[i];
+
+      		for(i = 0;i < 8;++i){ //ピン抜け待ち
+        		ch[i]=PPMMODE_MANUAL[i]; 
       		}
       		for(i = 0;i < 10;++i){
         	    PPM_Transmit(ch);
       		}
+
             while(true){
                 if(digitalRead(deploy_judge_pin_INPUT) == HIGH){
                     EEPROM.write(0,STABILIZE_NOSEUP); //再起動しても大丈夫なように、先に書き込んでおきたい
@@ -79,58 +82,73 @@ void loop()
       	break;
 
 		case STABILIZE_NOSEUP:
-            EEPROM.write(EEPROM_Address,2);
+
+            EEPROM.write(EEPROM_Address,2); //ログ残し用
             ++EEPROM_Address;
+
 			for(i = 0;i < 8;++i){
         		ch[i]=PPMMODE_STABILIZENOSEUP[i];
       		}
             for(i = 0;i <= 100;++i){ //2*1000/20 = 100、強制機首上げ2秒間
                 PPM_Transmit(ch);
             }
-            EEPROM.write(0,STABILIZE);
+
+            EEPROM.write(0,STABILIZE); //次に遷移
             plane_condition = STABILIZE;
 		break;
 
     	case STABILIZE://カットオフ後
-            EEPROM.write(EEPROM_Address,3);
+
+            EEPROM.write(EEPROM_Address,3); //ログ残し用
             ++EEPROM_Address;
+
             for(i = 3;i <= 9;++i){
                 PPMMODE_STABILIZE[2] = i*100;
                 for(j = 0;j < 14;++j){
                     PPM_Transmit(PPMMODE_STABILIZE); //7*14*20 = 1960で2秒間かけてプロペラ回転
                 }
             }
+
             for(i = 0;i < 500;++i){ //10*1000/20 = 500より、10秒間Stablizeで加速する。
                 PPM_Transmit(PPMMODE_STABILIZE);
             }
-            EEPROM.write(0,AUTO);
+
+            EEPROM.write(0,AUTO); //次に遷移
         	plane_condition = AUTO;
+
       	break;
 
     	case AUTO://離陸判定後
-            EEPROM.write(EEPROM_Address,4);
+
+            EEPROM.write(EEPROM_Address,4); //ログ残し用
             ++EEPROM_Address;
+
       		for(i=0;i<8;i++){
         		ch[i] = PPMMODE_AUTO[i];
       		}
             for(i= 0;i < 6000;++i){ //2分間、だから60*2*1000/20 = 6000
                 PPM_Transmit(ch); //AUTO確定
             }
-            EEPROM.write(0,DEEPSTALL);
+
+            EEPROM.write(0,DEEPSTALL); //次に遷移
         	plane_condition = DEEPSTALL;
             //MavLink_receive_GPS_and_send_with_LoRa(); //審査会には要らない
             //delay(1000); //あまり高頻度のGPS送るにしてもなぁ...(多分この後に一番最後の機構が入る。) //審査会にはいらない
+
       	break;
 
         case DEEPSTALL:
-            EEPROM.write(EEPROM_Address,5);
+
+            EEPROM.write(EEPROM_Address,5); //次に遷移
             ++EEPROM_Address;
+
             for(i = 0;i < 8;i++){
         		ch[i] = PPMMODE_DEEPSTALL[i];
       		}
             while(true){ //ずっと
                 PPM_Transmit(ch); //AUTO確定
             }
+
         break;
 
     	default:
@@ -139,7 +157,7 @@ void loop()
 }
 
 //function called by arduino to read any MAVlink messages sent by serial communication from flight controller to arduino
-float MavLink_receive_attitude()
+float MavLink_receive_attitude() //使わないけど...
 {
     mavlink_message_t msg;
     mavlink_status_t status;
@@ -160,7 +178,7 @@ float MavLink_receive_attitude()
     return 90.0; //whileが取れなかった時に応じて、Stabilizeを続ける返り値を返してあげる。
 }
 
-void MavLink_receive_GPS_and_send_with_LoRa()
+void MavLink_receive_GPS_and_send_with_LoRa() //使わないけど...
 {
     mavlink_message_t msg;
     mavlink_status_t status;
@@ -175,10 +193,10 @@ void MavLink_receive_GPS_and_send_with_LoRa()
                 {
                     mavlink_gps_raw_int_t packet;
                     mavlink_msg_gps_raw_int_decode(&msg, &packet);
-                    Serial.print("Lat:");delay(100);Serial.println(packet.lat);delay(100);
-                    Serial.print("Long:");delay(100);Serial.println(packet.lon);delay(100);
-                    Serial.print("Alt:");delay(100);Serial.println(packet.alt);delay(100);
-                    Serial.print("Speed:");delay(100);Serial.println(packet.vel);delay(100);
+                    Serial.print("Lat:");delay(100);Serial.println(packet.lat);delay(300);
+                    Serial.print("Long:");delay(100);Serial.println(packet.lon);delay(300);
+                    Serial.print("Alt:");delay(100);Serial.println(packet.alt);delay(300);
+                    Serial.print("Speed:");delay(100);Serial.println(packet.vel);delay(300);
                 }
                 break;
             }
@@ -187,7 +205,7 @@ void MavLink_receive_GPS_and_send_with_LoRa()
     }
 }
 
-void request_datastream()
+void request_datastream() //使わないけど...
 {
 //Request Data from Pixhawk
     uint8_t _system_id = 255; // id of computer which is sending the command (ground control software has id of 255)
@@ -253,7 +271,7 @@ void PPM_Transmit(int ch[8])
     OnePulth(20000-ppmWaitTimeSum);
 }
 
-void stabilize_func(int ch[8])
+void stabilize_func(int ch[8]) //使わないけど...
 {
     float pitch_angle;
     long time_temp_1 = millis();
