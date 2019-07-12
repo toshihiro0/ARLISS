@@ -5,17 +5,26 @@
 
 #define outpin 18 //PPM
 
+#define deploy_judge_pin_INPUT  12 //抜けピン
+
+#define SLEEP 0
+#define MANUAL 1
 #define STABILIZE_NOSEUP 2
+#define STABILIZE 3
 #define AUTO 4
-#define DEEP_STALL 5
+#define DEEPSTALL 5
 
 SoftwareSerial SerialMavlink(17,16); //Pixhawkと接続
 
+int EEPROM_Address = 1;
+
 //loopで何回も宣言するのが嫌だからグローバル宣言
 int PPMMODE_Arm[8] = {500,500,0,1000,100,1000,500,0}; //アームはラダー900では足りない、1000必要
-int PPMMODE_STABILIZENOSEUP[8] = {500,100,0,500,425,500,500,0}; //E100側が機首上げ
+int PPMMODE_MANUAL[8] = {500,500,0,500,165,500,500,0};
+int PPMMODE_STABILIZENOSEUP[8] = {500,100,100,500,425,500,500,0}; //100側が機首上げ?
+int PPMMODE_STABILIZE[8] = {500,500,300,500,425,500,500,0}; 
 int PPMMODE_AUTO[8] = {500,500,0,500,815,500,500,0};
-int PPMMODE_DEEPSTALL[8] = {900,100,0,500,425,500,900,0}; //エルロンもすべて上げる
+int PPMMODE_DEEPSTALL[8] = {500,900,0,500,425,500,500,0}; //エルロンもすべて上げる
 
 void setup()
 {
@@ -25,8 +34,16 @@ void setup()
     
   	pinMode(outpin,OUTPUT);
 
+    pinMode(deploy_judge_pin_INPUT,INPUT_PULLUP);
+
+    /* 
+    pinMode(LoRa_sw,OUTPUT);
+    digitalWrite(LoRa_sw,HIGH);
+    pinMode(LoRa_rst,OUTPUT);
+    digitalWrite(LoRa_rst,HIGH);
+    */
   	request_datastream();
-    EEPROM.write(0,2);
+    EEPROM.write(0,0);
     for(int i = 0;i <= 300;++i){
         PPM_Transmit(PPMMODE_Arm);
     }
@@ -36,39 +53,83 @@ void loop()
 {
   	int ch[8];
 
-	int i; //for文のループ数
+	int i,j; //for文のループ数
     int plane_condition = EEPROM.read(0);
 
   	switch (plane_condition) {
+    	case SLEEP: //溶断開始判定を受け取るまで
+            EEPROM.write(EEPROM_Address,0);
+            ++EEPROM_Address;
+      		for(i = 0;i < 8;++i){
+        		ch[i]=PPMMODE_MANUAL[i];
+      		}
+      		for(i = 0;i < 10;++i){
+        	    PPM_Transmit(ch);
+      		}
+            while(true){
+                if(digitalRead(deploy_judge_pin_INPUT) == HIGH){
+                    EEPROM.write(0,STABILIZE_NOSEUP); //再起動しても大丈夫なように、先に書き込んでおきたい
+        		    plane_condition = STABILIZE_NOSEUP;
+                    break;
+      		    }else{
+                    PPM_Transmit(ch);
+                    continue; //いちいち宣言したくなかったので、whileに突っ込んだ
+                }
+            }
+      	break;
+
 		case STABILIZE_NOSEUP:
+            EEPROM.write(EEPROM_Address,2);
+            ++EEPROM_Address;
 			for(i = 0;i < 8;++i){
-				ch[i] = PPMMODE_STABILIZENOSEUP[i];
-			}
-            for(i = 0;i < 10;++i){
+        		ch[i]=PPMMODE_STABILIZENOSEUP[i];
+      		}
+            for(i = 0;i <= 100;++i){ //2*1000/20 = 100、強制機首上げ2秒間
                 PPM_Transmit(ch);
             }
-            stabilize_func(ch);
-            EEPROM.write(0,AUTO);
-            plane_condition = AUTO;
+            EEPROM.write(0,STABILIZE);
+            plane_condition = STABILIZE;
 		break;
 
+    	case STABILIZE://カットオフ後
+            EEPROM.write(EEPROM_Address,3);
+            ++EEPROM_Address;
+            for(i = 3;i <= 9;++i){
+                PPMMODE_STABILIZE[2] = i*100;
+                for(j = 0;j < 14;++j){
+                    PPM_Transmit(PPMMODE_STABILIZE); //7*14*20 = 1960で2秒間かけてプロペラ回転
+                }
+            }
+            for(i = 0;i < 500;++i){ //10*1000/20 = 500より、10秒間Stablizeで加速する。
+                PPM_Transmit(PPMMODE_STABILIZE);
+            }
+            EEPROM.write(0,AUTO);
+        	plane_condition = AUTO;
+      	break;
+
     	case AUTO://離陸判定後
+            EEPROM.write(EEPROM_Address,4);
+            ++EEPROM_Address;
       		for(i=0;i<8;i++){
         		ch[i] = PPMMODE_AUTO[i];
       		}
-            for(i= 0;i < 3000;++i){ //1分間、だから60*1000/20 = 3000
+            for(i= 0;i < 6000;++i){ //2分間、だから60*2*1000/20 = 6000
                 PPM_Transmit(ch); //AUTO確定
             }
-            EEPROM.write(0,DEEP_STALL);
-            plane_condition = DEEP_STALL;
+            EEPROM.write(0,DEEPSTALL);
+        	plane_condition = DEEPSTALL;
+            //MavLink_receive_GPS_and_send_with_LoRa(); //審査会には要らない
+            //delay(1000); //あまり高頻度のGPS送るにしてもなぁ...(多分この後に一番最後の機構が入る。) //審査会にはいらない
       	break;
-        
-        case DEEP_STALL:
-            for(i = 0;i < 9;++i){
-                ch[i] = PPMMODE_DEEPSTALL[i];
-            }
-            while(true){
-                PPM_Transmit(ch);
+
+        case DEEPSTALL:
+            EEPROM.write(EEPROM_Address,5);
+            ++EEPROM_Address;
+            for(i = 0;i < 8;i++){
+        		ch[i] = PPMMODE_DEEPSTALL[i];
+      		}
+            while(true){ //ずっと
+                PPM_Transmit(ch); //AUTO確定
             }
         break;
 
@@ -99,7 +160,7 @@ float MavLink_receive_attitude()
     return 90.0; //whileが取れなかった時に応じて、Stabilizeを続ける返り値を返してあげる。
 }
 
-/*void MavLink_receive_GPS_and_send_with_LoRa()
+void MavLink_receive_GPS_and_send_with_LoRa()
 {
     mavlink_message_t msg;
     mavlink_status_t status;
@@ -124,7 +185,7 @@ float MavLink_receive_attitude()
             return;
         }
     }
-}*/
+}
 
 void request_datastream()
 {
@@ -195,14 +256,20 @@ void PPM_Transmit(int ch[8])
 void stabilize_func(int ch[8])
 {
     float pitch_angle;
+    long time_temp_1 = millis();
+    long time_temp_2;
     while(true){
         pitch_angle = MavLink_receive_attitude();
-        Serial.println(pitch_angle);
         if(-45<pitch_angle && pitch_angle<45){
             return;
         }else{
-            PPM_Transmit(ch); //stabilizeを続けるためにPPMを送る。
-            continue;
+            time_temp_2 = millis();
+            if(time_temp_2 - time_temp_1 > 10000){ //MavLinkが取れなくて、永遠にstabilizeにいるのに留まるのを防ぐ 10秒間
+                return; //MavLinkの問題では無く、そもそもPixhawk本体が死んでたらそれはもうどうしようもない...
+            }else{
+                PPM_Transmit(ch); //stabilizeを続けるためにPPMを送る。
+                continue;
+            }
         }
     } //breakは無いが、returnで戻るようになっている。
 }
