@@ -7,7 +7,7 @@ void setup()
 
 void loop()
 {
-    /*int ch[8] = {500,500,0,500,165,0,0,0};
+    int ch[8] = {500,500,0,500,165,0,0,0};
     int i,a = 1;
     while(true){
         if(ch[1] == 900 || ch[1] == 100){
@@ -17,11 +17,11 @@ void loop()
         for(i = 0;i < 10;++i){
             PPM_Transmit(ch);
         }
-    }*/
-    int ch[8] = {500,900,0,500,165,500,500,0};
+    }
+    /*int ch[8] = {500,900,0,500,165,500,500,0};
     while(true){
       PPM_Transmit(ch);
-    }
+    }*/
 }
 
 void PPM_Transmit(int ch[8])
