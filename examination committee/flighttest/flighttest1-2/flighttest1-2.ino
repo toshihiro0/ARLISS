@@ -14,14 +14,14 @@
 #define AUTO 4
 #define DEEPSTALL 5
 
-SoftwareSerial SerialMavlink(17,16); //Pixhawkと接続
+//SoftwareSerial SerialMavlink(17,16); //Pixhawkと接続
 
 int EEPROM_Address = 1;
 
 //loopで何回も宣言するのが嫌だからグローバル宣言
 int PPMMODE_Arm[8] = {500,500,0,1000,100,1000,500,0}; //アームはラダー900では足りない、1000必要
-int PPMMODE_MANUAL[8] = {500,500,0,500,165,500,500,0};
-int PPMMODE_STABILIZENOSEUP[8] = {500,900,100,500,425,500,500,0}; //900側が機首上げ
+int PPMMODE_MANUAL[8] = {500,900,0,500,165,500,500,0};
+int PPMMODE_STABILIZENOSEUP[8] = {500,900,0,500,425,500,500,0}; //900側が機首上げ
 int PPMMODE_STABILIZE[8] = {500,500,300,500,425,500,500,0}; //300から徐々に上げる
 int PPMMODE_AUTO[8] = {500,500,0,500,815,500,500,0};
 int PPMMODE_DEEPSTALL[8] = {500,900,0,500,425,500,500,0}; //900側がエレベーター上げ
@@ -42,7 +42,7 @@ void setup()
     pinMode(LoRa_rst,OUTPUT);
     digitalWrite(LoRa_rst,HIGH);
     */
-  	request_datastream();
+  	//request_datastream();
     EEPROM.write(0,0);
     for(int i = 0;i <= 300;++i){ //アーム
         PPM_Transmit(PPMMODE_Arm);
@@ -109,7 +109,7 @@ void loop()
                 }
             }
 
-            for(i = 0;i < 500;++i){ //10*1000/20 = 500より、10秒間Stablizeで加速する。
+            for(i = 0;i < 250;++i){ //5*1000/20 = 250より、5秒間Stablizeで加速する。
                 PPM_Transmit(PPMMODE_STABILIZE);
             }
 
@@ -178,7 +178,7 @@ float MavLink_receive_attitude() //使わないけど...
     return 90.0; //whileが取れなかった時に応じて、Stabilizeを続ける返り値を返してあげる。
 }
 
-void MavLink_receive_GPS_and_send_with_LoRa() //使わないけど...
+/*void MavLink_receive_GPS_and_send_with_LoRa() //使わないけど...
 {
     mavlink_message_t msg;
     mavlink_status_t status;
@@ -237,7 +237,7 @@ void request_datastream() //使わないけど...
    *  - Gyro info (IMU_SCALED) in MAV_DATA_STREAM_EXTRA1
    */
 
-    // Initialize the required buffers
+/*    // Initialize the required buffers
     mavlink_message_t msg;
     uint8_t buf[MAVLINK_MAX_PACKET_LEN];
 
@@ -246,7 +246,7 @@ void request_datastream() //使わないけど...
     uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);  // Send the message (.write sends as bytes)
 
     SerialMavlink.write(buf, len); //Write data to serial port
-}
+}*/
 
 void OnePulth(int PPMtime)
 {
@@ -268,10 +268,10 @@ void PPM_Transmit(int ch[8])
         OnePulth(ch[i]);
     }
 
-    OnePulth(20000-ppmWaitTimeSum);
+    OnePulth(19000-ppmWaitTimeSum);
 }
 
-void stabilize_func(int ch[8]) //使わないけど...
+/*void stabilize_func(int ch[8]) //使わないけど...
 {
     float pitch_angle;
     long time_temp_1 = millis();
@@ -282,7 +282,7 @@ void stabilize_func(int ch[8]) //使わないけど...
             return;
         }else{
             time_temp_2 = millis();
-            if(time_temp_2 - time_temp_1 > 10000){ //MavLinkが取れなくて、永遠にstabilizeにいるのに留まるのを防ぐ 10秒間
+            if(time_temp_2 - time_temp_1 > 5000){ //MavLinkが取れなくて、永遠にstabilizeにいるのに留まるのを防ぐ 5秒間
                 return; //MavLinkの問題では無く、そもそもPixhawk本体が死んでたらそれはもうどうしようもない...
             }else{
                 PPM_Transmit(ch); //stabilizeを続けるためにPPMを送る。
@@ -290,4 +290,4 @@ void stabilize_func(int ch[8]) //使わないけど...
             }
         }
     } //breakは無いが、returnで戻るようになっている。
-}
+}*/
