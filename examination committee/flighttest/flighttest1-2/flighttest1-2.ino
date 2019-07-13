@@ -30,7 +30,7 @@ void setup()
 {
     pinMode(14,INPUT_PULLUP);
     while(digitalRead(14) == HIGH){}
-    SerialMavlink.begin(57600); //RXTX from Pixhawk
+    //SerialMavlink.begin(57600); //RXTX from Pixhawk
     
   	pinMode(outpin,OUTPUT);
 
@@ -157,7 +157,7 @@ void loop()
 }
 
 //function called by arduino to read any MAVlink messages sent by serial communication from flight controller to arduino
-float MavLink_receive_attitude() //使わないけど...
+/*float MavLink_receive_attitude() //使わないけど...
 {
     mavlink_message_t msg;
     mavlink_status_t status;
@@ -178,7 +178,7 @@ float MavLink_receive_attitude() //使わないけど...
     return 90.0; //whileが取れなかった時に応じて、Stabilizeを続ける返り値を返してあげる。
 }
 
-/*void MavLink_receive_GPS_and_send_with_LoRa() //使わないけど...
+void MavLink_receive_GPS_and_send_with_LoRa() //使わないけど...
 {
     mavlink_message_t msg;
     mavlink_status_t status;
