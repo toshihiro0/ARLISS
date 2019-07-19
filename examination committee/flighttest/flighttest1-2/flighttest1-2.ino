@@ -20,7 +20,7 @@ int EEPROM_Address = 1;
 
 //loopで何回も宣言するのが嫌だからグローバル宣言
 int PPMMODE_Arm[8] = {500,500,0,1000,100,1000,500,0}; //アームはラダー900では足りない、1000必要
-int PPMMODE_MANUAL[8] = {500,900,0,500,165,500,500,0};
+int PPMMODE_MANUAL[8] = {500,500,0,500,165,500,500,0};
 int PPMMODE_STABILIZENOSEUP[8] = {500,900,0,500,425,500,500,0}; //900側が機首上げ
 int PPMMODE_STABILIZE[8] = {500,500,300,500,425,500,500,0}; //300から徐々に上げる
 int PPMMODE_AUTO[8] = {500,500,0,500,815,500,500,0};
@@ -72,7 +72,7 @@ void loop()
             while(true){
                 if(digitalRead(deploy_judge_pin_INPUT) == HIGH){
                     EEPROM.write(0,STABILIZE_NOSEUP); //再起動しても大丈夫なように、先に書き込んでおきたい
-        		    plane_condition = STABILIZE_NOSEUP;
+        		        plane_condition = STABILIZE_NOSEUP;
                     break;
       		    }else{
                     PPM_Transmit(ch);
@@ -85,7 +85,9 @@ void loop()
 
             EEPROM.write(EEPROM_Address,2); //ログ残し用
             ++EEPROM_Address;
-
+      for(i = 0;i < 150;++i){ //加速3秒間 //3*1000/20 =  150
+            PPM_Transmit(PPMMODE_MANUAL);
+      }
 			for(i = 0;i < 8;++i){
         		ch[i]=PPMMODE_STABILIZENOSEUP[i];
       		}
@@ -109,7 +111,7 @@ void loop()
                 }
             }
 
-            for(i = 0;i < 250;++i){ //5*1000/20 = 250より、5秒間Stablizeで加速する。
+            for(i = 0;i < 500;++i){ //10*1000/20 = 500より、10秒間Stablizeで加速する。
                 PPM_Transmit(PPMMODE_STABILIZE);
             }
 
