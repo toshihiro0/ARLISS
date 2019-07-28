@@ -9,8 +9,6 @@
 
 #define SLEEP 0
 #define MANUAL 1
-#define STABILIZE_NOSEUP 2
-#define STABILIZE 3
 #define AUTO 4
 #define DEEPSTALL 5
 
@@ -21,8 +19,6 @@ int EEPROM_Address = 1;
 //loopで何回も宣言するのが嫌だからグローバル宣言
 int PPMMODE_Arm[8] = {500,500,0,1000,100,1000,500,0}; //アームはラダー900では足りない、1000必要
 int PPMMODE_MANUAL[8] = {500,500,0,500,165,500,500,0};
-int PPMMODE_STABILIZENOSEUP[8] = {500,900,0,500,425,500,500,0}; //900側が機首上げ
-int PPMMODE_STABILIZE[8] = {500,500,300,500,425,500,500,0}; //300から徐々に上げる
 int PPMMODE_AUTO[8] = {500,500,0,500,815,500,500,0};
 int PPMMODE_DEEPSTALL[8] = {500,900,0,500,425,500,500,0}; //900側がエレベーター上げ
 
@@ -62,17 +58,14 @@ void loop()
             EEPROM.write(EEPROM_Address,0); //ログ残し用
             ++EEPROM_Address;
 
-      		for(i = 0;i < 8;++i){ //ピン抜け待ち
-        		ch[i]=PPMMODE_MANUAL[i]; 
-      		}
       		for(i = 0;i < 10;++i){
-        	    PPM_Transmit(ch);
+        	    PPM_Transmit(PPMMODE_MANUAL);
       		}
 
             while(true){
                 if(digitalRead(deploy_judge_pin_INPUT) == HIGH){
-                    EEPROM.write(0,STABILIZE_NOSEUP); //再起動しても大丈夫なように、先に書き込んでおきたい
-        		        plane_condition = STABILIZE_NOSEUP;
+                    EEPROM.write(0,MANUAL); //再起動しても大丈夫なように、先に書き込んでおきたい
+        		        plane_condition = MANUAL;
                     break;
       		    }else{
                     PPM_Transmit(ch);
@@ -81,44 +74,13 @@ void loop()
             }
       	break;
 
-		case STABILIZE_NOSEUP:
-
-            EEPROM.write(EEPROM_Address,2); //ログ残し用
-            ++EEPROM_Address;
-      for(i = 0;i < 150;++i){ //加速3秒間 //3*1000/20 =  150
-            PPM_Transmit(PPMMODE_MANUAL);
-      }
-			for(i = 0;i < 8;++i){
-        		ch[i]=PPMMODE_STABILIZENOSEUP[i];
-      		}
-            for(i = 0;i <= 100;++i){ //2*1000/20 = 100、強制機首上げ2秒間
-                PPM_Transmit(ch);
+        case MANUAL:
+            for(i = 0;i < 150;++i){ //加速3秒間
+                PPM_Transmit(PPMMODE_MANUAL);
             }
-
-            EEPROM.write(0,STABILIZE); //次に遷移
-            plane_condition = STABILIZE;
-		break;
-
-    	case STABILIZE://カットオフ後
-
-            EEPROM.write(EEPROM_Address,3); //ログ残し用
-            ++EEPROM_Address;
-
-            for(i = 3;i <= 9;++i){
-                PPMMODE_STABILIZE[2] = i*100;
-                for(j = 0;j < 14;++j){
-                    PPM_Transmit(PPMMODE_STABILIZE); //7*14*20 = 1960で2秒間かけてプロペラ回転
-                }
-            }
-
-            for(i = 0;i < 500;++i){ //10*1000/20 = 500より、10秒間Stablizeで加速する。
-                PPM_Transmit(PPMMODE_STABILIZE);
-            }
-
-            EEPROM.write(0,AUTO); //次に遷移
-        	plane_condition = AUTO;
-
-      	break;
+            EEPROM.write(0,AUTO);
+            plane_condition = AUTO;
+        break;
 
     	case AUTO://離陸判定後
 
