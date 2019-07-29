@@ -16,7 +16,7 @@
 #define inpin 10  //D10、PPMエンコーダの信号線に繋ぐ
 #define deploy_judge_pin_INPUT  12 //D12、抜けピン(初期状態ではGNDに挿さっていて、抜けたら制御開始)
 #define button_pin 14 //A0、ボタン
-#define CH1_PIN 19  //A5、RCレシーバのCh6から直接配線する  
+#define CH1_PIN 15  //A1、RCレシーバのCh6から直接配線する  
 #define outpin 18  //A4、PixhawkのRCの信号線に直接配線する
 
 #define SLEEP 0
@@ -60,7 +60,7 @@ void setup() {
 
 void loop() {
     CH1_value = pulseIn(CH1_PIN,HIGH);
-    if(CH1_value<1500){//スイッチAが上に上がっている状態だとArduino制御する
+    if(CH1_value<1500){//スイッチAが上に上がっている状態だとArduino制御する、オートの時のみプロポ制御への遷移を許可
       Serial.println(CH1_value);
       int plane_condition = EEPROM.read(0); //再起動用に読み出し
      
