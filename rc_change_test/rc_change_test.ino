@@ -1,12 +1,10 @@
 /*************************************************
  * rc_change_test.ino
  * 2019/7/29 作成者鈴木
- * 
- * 
+ *
+ *
  * 審査会用コードを改変、抜けピン後オート飛行中にスイッチA押下げでプロポ飛行に遷移
  *************************************************/
-
-
 
 #include <mavlink.h>
 #include <SoftwareSerial.h>
@@ -15,8 +13,8 @@
 
 #define inpin 10  //D10、PPMエンコーダの信号線に繋ぐ
 #define deploy_judge_pin_INPUT  12 //D12、抜けピン(初期状態ではGNDに挿さっていて、抜けたら制御開始)
-#define button_pin 14 //A0、ボタン
-#define CH1_PIN 15  //A1、RCレシーバのCh6から直接配線する  
+#define button_pin 14 //A0、ボタン、最初はINPUT_PULLUP状態で、GNDに挿すことでアームする
+#define CH1_PIN 15  //A1、RCレシーバのCh6から直接配線する
 #define outpin 18  //A4、PixhawkのRCの信号線に直接配線する
 
 #define SLEEP 0
@@ -44,7 +42,7 @@ void setup() {
   pinMode(inpin,INPUT);
   while(digitalRead(button_pin) == HIGH){}//ボタンが押されるまで待っている
   pinMode(deploy_judge_pin_INPUT,INPUT_PULLUP);
-  Serial.begin(38400);//あとでこのシリアル通信はしなくする 
+  // Serial.begin(38400);//あとでこのシリアル通信はしなくする
   /*
     pinMode(LoRa_sw,OUTPUT);
     digitalWrite(LoRa_sw,HIGH);
@@ -63,14 +61,14 @@ void loop() {
     if(CH1_value<1500){//スイッチAが上に上がっている状態だとArduino制御する、オートの時のみプロポ制御への遷移を許可
       Serial.println(CH1_value);
       int plane_condition = EEPROM.read(0); //再起動用に読み出し
-     
+
       switch (plane_condition) {
         case SLEEP: //溶断開始判定を受け取るまで
           EEPROM.write(EEPROM_Address,0); //ログ残し用
           ++EEPROM_Address;
           for(int i = 0;i < 10;++i){
             PPM_Transmit(PPMMODE_MANUAL);
-          }        
+          }
           while(true){
             if(digitalRead(deploy_judge_pin_INPUT) == HIGH){
               EEPROM.write(0,MANUAL); //再起動しても大丈夫なように、先に書き込んでおきたい
@@ -93,7 +91,7 @@ void loop() {
         case AUTO://離陸判定後、仕様変更あり、GPSの実装はまだ
           EEPROM.write(EEPROM_Address,4); //ログ残し用
           ++EEPROM_Address;
-          for(int i = 0;i < 10;++i){//AUTO確定 
+          for(int i = 0;i < 10;++i){//AUTO確定
             PPM_Transmit(PPMMODE_AUTO);
           }
           if(time_auto_zero == 0){//初めてオートに入った時刻を記録
@@ -108,7 +106,7 @@ void loop() {
             }else{
               break;
             }
-          }        
+          }
 
         case DEEPSTALL:
           EEPROM.write(EEPROM_Address,5); //次に遷移
@@ -116,11 +114,11 @@ void loop() {
           while(true){ //ずっと
             PPM_Transmit(PPMMODE_DEEPSTALL); //AUTO確定
           }
-         
+
         default:
           break;
       }
-      
+
     }else{//スイッチAを下に倒すとプロポ操作に移行
       while(true){//一度プロポ操作モードに入ったらArduino操作には戻れない仕様になっているので、書き方は変えた方がいいかもしれない(プロポ信号のパススルーと他の処理を並列させると、動作しなくなる)
         rc_ppm = digitalRead(inpin);
@@ -128,7 +126,7 @@ void loop() {
       }
     }
 
-    
+
 }
 
 void OnePulth(int PPMtime)
