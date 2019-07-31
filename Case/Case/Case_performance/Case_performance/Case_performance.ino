@@ -62,6 +62,7 @@ void loop()
     //cds(); //明暗の判定
     //digitalWrite(LoRa_sw,HIGH); //ロケットから放出されたので、通信を開始してOK
     //Serial.begin(19200); //通信開始には多少待つ必要があるみたいだけど...
+    analogReference(DEFAULT)
     height = heightjudge(); //高度判定
     nichromecut(); //ニクロム線カット
     senttoLora(height);
@@ -70,13 +71,18 @@ void loop()
 
 void cds()
 {
-    int i,sum = 0;
-    static const int analogpin = 7;
+    int i,j,sum = 0;
+    int analogpin[3] = {0,6,7};
     static const int judge_value = 750;
     int judge_times = 0;     
     while(judge_times < 3){ //3回連続OKでwhile抜ける
         for(i = 0;i < 5;++i){
-            sum += analogRead(analogpin); //アナログピンの読み取り
+            int sum_temp = 0;
+            for(j = 0;j < 3;++j){
+                sumtemp += analogRead(analogpin[j]); //アナログピンの読み取り
+            }
+            sum_temp /= 3;
+            sum += sum_temp;
             delay(2); //少しずつ遅らせて取らないと、何回も計測する意味が無い
         }
         int value = sum/5;
