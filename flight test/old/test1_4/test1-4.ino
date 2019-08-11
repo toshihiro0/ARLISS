@@ -1,11 +1,19 @@
+/*************************************************
+ * test1-4.ino
+ * 2019/7/31 作成者鈴木
+ *
+ *
+ * 8/1松戸での飛行試験を想定したコード
+ * ボタンは使用せず、電源投入後15秒で自動的にArmする。
+ * 抜けピンを抜いたら3秒マニュアルに入ったのちスタビライズで2秒強制機首上げに入るので、ピンを抜いたらすぐに落とす。
+ *************************************************/
+
 #include <mavlink.h>
 #include <SoftwareSerial.h>
 #include <EEPROM.h>
 #include <math.h>
 
 #define outpin 18 //PPM
-#define button_pin 14 //ボタンのピン
-
 #define deploy_judge_pin_INPUT  12 //抜けピン
 
 #define SLEEP 0
@@ -15,7 +23,7 @@
 #define AUTO 4
 #define DEEPSTALL 5
 
-SoftwareSerial LoRa(17,16); //LoRaと接続、PixhawkはSerialでつなぐ。
+//SoftwareSerial LoRa(17,16); //LoRaと接続、PixhawkはSerialでつなぐ。(飛行試験では不使用)
 
 int EEPROM_Address = 1;
 
@@ -30,12 +38,10 @@ int PPMMODE_DEEPSTALL[8] = {500,900,0,500,425,500,500,0}; //900側がエレベ�
 void setup()
 {
     pinMode(button_pin,INPUT_PULLUP);
-    while(digitalRead(button_pin) == HIGH){}
-
   	pinMode(outpin,OUTPUT);
-
     pinMode(deploy_judge_pin_INPUT,INPUT_PULLUP);
-
+    while(digitalRead(deploy_judge_pin_INPUT) == HIGH){}//抜けピンをはじめに挿し忘れてた時に、意図せずにスロットルが回転するのを防ぐ
+    delay(15000);//電源投入後、15秒でアーム
     /*
     pinMode(LoRa_sw,OUTPUT);  //LoRa周りの通信on
     digitalWrite(LoRa_sw,HIGH);
@@ -91,20 +97,19 @@ void loop()
             }
             EEPROM.write(0,STABILIZE_NOSEUP);
             plane_condition = STABILIZE_NOSEUP;
-        break;
+        break
 
-        case STABILIZE_NOSEUP:
+        case STABILIZE_NOSEUP: //モード確定
 
             EEPROM.write(EEPROM_Address,2); //ログ残し用
             ++EEPROM_Address;
 
-            for(i = 0;i <= 100;++i){ //2*1000/20 = 100、強制機首上げ2秒間
+            for(i = 0;i < 100;++i){ //2秒間強制機首上げ
                 PPM_Transmit(PPMMODE_STABILIZE_NOSEUP);
             }
-
-            EEPROM.write(0,STABILIZE); //次に遷移
+            EEPROM.write(0,STABILIZE);
             plane_condition = STABILIZE;
-		break;
+        break;
 
     	case STABILIZE://カットオフ後
 
@@ -118,7 +123,7 @@ void loop()
                 }
             }
 
-            for(i = 0;i < 250;++i){ //5*1000/20 = 250より、5秒間Stablizeで加速する。
+            for(i = 0;i < 150;++i){ //3*1000/20 = 150より、3秒間Stablizeで加速する。(5秒は過剰かと思ったので短くしてみた)
                 PPM_Transmit(PPMMODE_STABILIZE);
             }
 
@@ -140,7 +145,7 @@ void loop()
             time1 = millis();
 
             while(true){
-                MavLink_receive_GPS_and_send_with_LoRa();
+                //MavLink_receive_GPS_and_send_with_LoRa();
                 PPM_Transmit(PPMMODE_AUTO);
                 time2 = millis();
                 if((time2-time1) > 120000){
@@ -193,7 +198,7 @@ float MavLink_receive_attitude() //使わないけど...
     return 90.0; //whileが取れなかった時に応じて、Stabilizeを続ける返り値を返してあげる。
 }
 
-void MavLink_receive_GPS_and_send_with_LoRa() //使わないけど...
+void MavLink_receive_GPS_and_send_with_LoRa()
 {
     int i;
     mavlink_message_t msg;
@@ -209,6 +214,7 @@ void MavLink_receive_GPS_and_send_with_LoRa() //使わないけど...
                 {
                     mavlink_gps_raw_int_t packet;
                     mavlink_msg_gps_raw_int_decode(&msg, &packet);
+
                     LoRa.print("Lat:");
                     for(i = 0;i < 5;++i){
                         PPM_Transmit(PPMMODE_AUTO);
@@ -243,13 +249,13 @@ void MavLink_receive_GPS_and_send_with_LoRa() //使わないけど...
                     LoRa.println(packet.vel);
                     for(i = 0;i < 25;++i){
                         PPM_Transmit(PPMMODE_AUTO);
-                    }
-                } //ここまで600ms*3 = 1.8s
+                    }; //ここまで600ms*3 = 1.8s
+                }
                 break;
             }
             return;
         }
-        return;
+        return; //取れなくても返す。
     }
 }
 
