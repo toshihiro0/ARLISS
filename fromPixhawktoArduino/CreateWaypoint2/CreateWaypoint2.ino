@@ -47,8 +47,8 @@ void MavLink_receive()
       // Step 2 uploading a new waypoint - Check for mission replies
       case MAVLINK_MSG_ID_MISSION_REQUEST:
       {
-       mavlink_mission_request_t missionreq;
-       mavlink_msg_mission_request_decode(&msg, &missionreq);
+        mavlink_mission_request_t missionreq;
+        mavlink_msg_mission_request_decode(&msg, &missionreq);
                
         Serial.print("\nMission Req Sequence: ");Serial.println(missionreq.seq);
         Serial.print("\SysID: ");Serial.println(missionreq.target_system);
@@ -164,7 +164,8 @@ void MavLink_receive2()
   }
 }
  
-void mission_count() {
+void mission_count()
+{
   //Step #1 of uploading a new waypoint
   uint8_t _system_id = 255; // system id of sending station. 255 is Ground control software
   uint8_t _component_id = 2; // component id of sending station 2 works fine
