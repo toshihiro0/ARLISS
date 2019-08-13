@@ -37,7 +37,7 @@ int PPMMODE_DEEPSTALL[8] = {500,900,0,500,425,500,500,0}; //900側がエレベ�
 
 void setup()
 {
-    pinMode(button_pin,INPUT_PULLUP);
+//    pinMode(button_pin,INPUT_PULLUP);
   	pinMode(outpin,OUTPUT);
     pinMode(deploy_judge_pin_INPUT,INPUT_PULLUP);
     while(digitalRead(deploy_judge_pin_INPUT) == HIGH){}//抜けピンをはじめに挿し忘れてた時に、意図せずにスロットルが回転するのを防ぐ
@@ -97,9 +97,9 @@ void loop()
             }
             EEPROM.write(0,STABILIZE_NOSEUP);
             plane_condition = STABILIZE_NOSEUP;
-        break
+        break;
 
-        case STABILIZE_NOSEUP: //モード確定
+        case STABILIZE_NOSEUP: 
 
             EEPROM.write(EEPROM_Address,2); //ログ残し用
             ++EEPROM_Address;
@@ -137,7 +137,7 @@ void loop()
             EEPROM.write(EEPROM_Address,4); //ログ残し用
             ++EEPROM_Address;
 
-            for(i= 0;i < 6000;++i){ //2分間、だから60*2*1000/20 = 6000
+            for(i= 0;i < 3000;++i){ //1分間、だから60*1*1000/20 = 3000(2分だと少し長すぎる気がしたので)
                 PPM_Transmit(PPMMODE_AUTO); //AUTO確定
             }
 
@@ -198,7 +198,7 @@ float MavLink_receive_attitude() //使わないけど...
     return 90.0; //whileが取れなかった時に応じて、Stabilizeを続ける返り値を返してあげる。
 }
 
-void MavLink_receive_GPS_and_send_with_LoRa()
+/*void MavLink_receive_GPS_and_send_with_LoRa()
 {
     int i;
     mavlink_message_t msg;
@@ -292,7 +292,7 @@ void request_datastream() //使わないけど...
    */
 
     // Initialize the required buffers
-    mavlink_message_t msg;
+/*    mavlink_message_t msg;
     uint8_t buf[MAVLINK_MAX_PACKET_LEN];
 
     // Pack the message
@@ -300,7 +300,7 @@ void request_datastream() //使わないけど...
     uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);  // Send the message (.write sends as bytes)
 
     Serial.write(buf, len); //Write data to serial port
-}
+}*/
 
 void OnePulth(int PPMtime)
 {
