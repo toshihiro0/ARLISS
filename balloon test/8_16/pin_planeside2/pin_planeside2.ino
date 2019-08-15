@@ -3,9 +3,11 @@
 #include <EEPROM.h>
 #include <math.h>
 
-#define outpin 3 //PPM
+#define outpin 18 //PPM
+#define deploy_judge_pin_INPUT1  12 //一段階目溶断の抜けピン
+#define deploy_judge_pin_INPUT2  9 //二段階目溶断の抜けピン
 #define LoRa_sw 6 //MOSFETのスイッチピン
-#define LoRa_rst 18 //LoRaのリセット
+#define LoRa_rst 14 //LoRaのリセット
 #define LoRa_RX 17
 #define LoRa_TX 19
 
@@ -39,6 +41,9 @@ int PPMMODE_DEEPSTALL[8] = {500,900,0,500,425,500,500,0}; //900側がエレベ�
 void setup()
 {
     pinMode(outpin,OUTPUT);
+    pinMode(deploy_judge_pin_INPUT1,INPUT_PULLUP);
+    pinMode(deploy_judge_pin_INPUT2,INPUT_PULLUP);
+    while(digitalRead(deploy_judge_pin_INPUT1) == HIGH){}
     /*
     抜けピンをはじめに挿し忘れてた時に、意図せずにスロットルが回転するのを防ぐ
     */
@@ -54,23 +59,15 @@ void setup()
 
     EEPROM.write(0,0);
 
-    delay(15000); //起動15s後まで待つ
-
     int i,j;
     for(i = 0;i < 300;++i){ //アーム
         PPM_Transmit(PPMMODE_Arm);
     }
-
-    while(true){
-        char buf[128];
-        LoRa_recv(buf,SLEEP);
-        if(strstr(buf,"cutoff")!= NULL){
-            break;
-        }
-    }
-
+    while(digitalRead(deploy_judge_pin_INPUT1) == LOW){
+        PPM_Transmit(PPMMODE_MANUAL);
+    }//D10がGNDに挿さっている間はここで止まる
     for(i = 3;i <= 9;++i){
-        PPMMODE_TRAINING[2] = i*100;
+        PPMMODE_TRAINING[2] = 300;
         for(j = 0;j < 14;++j){
             PPM_Transmit(PPMMODE_TRAINING); //7*14*20 = 1960で2秒間かけてプロペラ回転
         }
@@ -89,12 +86,13 @@ void loop()
                 PPM_Transmit(PPMMODE_TRAINING);
             }
             while(true){
-                char buf[128];
-                LoRa_recv(buf,TRAINING);
-                if(strstr(buf,"cutoff")!= NULL){
+                if(digitalRead(deploy_judge_pin_INPUT2) == HIGH){
                     EEPROM.write(0,TRAINING); //再起動しても大丈夫なように、先に書き込んでおきたい
                     plane_condition = TRAINING;
                     break;
+                }else{
+                    PPM_Transmit(PPMMODE_TRAINING);//ここで一応、マニュアルのPPMを送っておく
+                    continue; //いちいち宣言したくなかったので、whileに突っ込んだ
                 }
             }
         break;
@@ -128,7 +126,7 @@ void loop()
             ++EEPROM_Address;
 
             for(int i = 3;i <= 9;++i){
-                PPMMODE_STABILIZE[2] = i*100;
+                PPMMODE_STABILIZE[2] = 300;
                 for(int j = 0;j < 14;++j){
                     PPM_Transmit(PPMMODE_STABILIZE); //7*14*20 = 1960で2秒間かけてプロペラ回転
                 }
@@ -165,6 +163,8 @@ void loop()
                         PPM_Transmit(PPMMODE_AUTO);
                     }
                     if(MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint()){
+                        EEPROM.write(EEPROM_Address,6);
+                        ++EEPROM_Address;
                         EEPROM.write(0,DEEPSTALL); //次に遷移
                         plane_condition = DEEPSTALL;
                         break;
@@ -184,26 +184,6 @@ void loop()
 
         default:
         break;
-    }
-}
-
-void LoRa_recv(char *buf,int mode)
-{
-    while (true) {
-        while (LoRa.available() > 0) {
-            *buf++ = LoRa.read();
-            if(*(buf-3) == 'O' && *(buf-2) == 'K' && *(buf-1) == '\r'){
-                continue;
-            }else if (*(buf-1) == '\r'){
-                *buf = '\0';
-                return;
-            }
-        }
-        if(mode == SLEEP){
-            PPM_Transmit(PPMMODE_MANUAL);
-        }else if(mode == TRAINING){
-            PPM_Transmit(PPMMODE_TRAINING);
-        }
     }
 }
 
