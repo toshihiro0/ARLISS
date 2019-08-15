@@ -1,8 +1,13 @@
 /*************************************************
- * rc_change_test.ino
+ * rc_Arduino_rc.ino
  * 2019/7/29 作成者鈴木
  * 2019/7/31 更新者鈴木 ボタンがなくなったので、ボタンでアームのシーケンスを時間制御に変更
- * 
+ * 2019/8/14 更新者鈴木 RCで制御→Arduinoで制御→RCで制御というシーケンスに変更。松戸での飛行試験を想定
+ * 操作方法が難しくなってしまったのでここにメモしておく
+ * そもそも抜けピンは必要ないので挿さない
+ * プログラム開始時にはスイッチAをARD側に倒しておき、スイッチCはスタビライズにしておくこと。
+ * 投げた後は、できるだけ高度を稼ぐように飛行させる。プログラム開始から45秒経過で、自動的にArduino制御に移行
+ * オート飛行中は、スイッチAを下に倒すとプロポ操作に移行することが可能。
  *
  * test3を改変、抜けピン後オート飛行中にスイッチA押下げでプロポ飛行に遷移
  *************************************************/
@@ -12,11 +17,11 @@
 #include <EEPROM.h>
 #include <math.h>
 
-#define inpin 7  //D7、PPMエンコーダの信号線に繋ぐ。
+#define inpin 7  //D7、PPMエンコーダの信号線に繋ぐ。PD7としてrc制御しているので書き換えるならそこも書き換える
 #define deploy_judge_pin_INPUT  12 //D12、抜けピン(初期状態ではGNDに挿さっていて、抜けたら制御開始)
 #define LoRa_rst 14 //A0、LoRaのリセット
 #define CH1_PIN 15  //A1、RCレシーバのCh6から直接配線する
-#define outpin 18  //A4、PixhawkのRCの信号線に直接配線する。
+#define outpin 18  //A4、PixhawkのRCの信号線に直接配線する。PC4としてrc制御しているので書き換えるならそこも書き換える
 #define LoRa_sw 19 //A5、LoRaに電源供給する
 
 #define SLEEP 0
@@ -55,10 +60,20 @@ void setup() {
   digitalWrite(LoRa_rst,HIGH);
 
    request_datastream();
-   EEPROM.write(0,0);
+   EEPROM.write(0,4);//最初からオートに移行するようにしておく
    for(int i = 0;i <= 300;++i){ //アーム
      PPM_Transmit(PPMMODE_Arm);
    }
+
+   while(millis()<45000){//プログラム開始から45秒間はrc入力で飛行する(アームまでに最低15秒間使っているから、そんなに長くはない)。極限まで処理のサイクル数を減らさないとパススルー出来なかったので、このような書き方になっている。
+     rc_ppm = PIND & _BV(7);
+     if(rc_ppm == 0){
+       PORTC &= ~_BV(PC4);
+     }else{
+       PORTC |= _BV(PC4);
+     }
+   }
+
 }
 
 void loop() {
@@ -68,60 +83,6 @@ void loop() {
       int plane_condition = EEPROM.read(0); //再起動用に読み出し
 
       switch (plane_condition) {
-        case SLEEP: //溶断開始判定を受け取るまで
-          EEPROM.write(EEPROM_Address,0); //ログ残し用
-          ++EEPROM_Address;
-          for(int i = 0;i < 10;++i){
-            PPM_Transmit(PPMMODE_MANUAL);
-          }
-          while(true){
-            if(digitalRead(deploy_judge_pin_INPUT) == HIGH){
-              EEPROM.write(0,MANUAL); //再起動しても大丈夫なように、先に書き込んでおきたい
-              plane_condition = MANUAL;
-              break;
-            }else{
-              PPM_Transmit(PPMMODE_MANUAL);//ここで一応、マニュアルのPPMを送っておく
-              continue; //いちいち宣言したくなかったので、whileに突っ込んだ
-            }
-          }
-
-       case MANUAL:
-          EEPROM.write(EEPROM_Address,1); //ログ残し用
-          ++EEPROM_Address;
-          for(int i = 0;i < 150;++i){ //加速3秒間
-            PPM_Transmit(PPMMODE_MANUAL);
-          }
-          EEPROM.write(0,STABILIZE_NOSEUP);
-          plane_condition = STABILIZE_NOSEUP;
-          break;
-
-        case STABILIZE_NOSEUP:
-          EEPROM.write(EEPROM_Address,2); //ログ残し用
-          ++EEPROM_Address;
-
-          for(int i = 0;i <= 100;++i){ //2*1000/20 = 100、強制機首上げ2秒間
-            PPM_Transmit(PPMMODE_STABILIZE_NOSEUP);
-          }
-
-          EEPROM.write(0,STABILIZE); //次に遷移
-          plane_condition = STABILIZE;
-	        break;
-
-        case STABILIZE://カットオフ後
-          EEPROM.write(EEPROM_Address,3); //ログ残し用
-          ++EEPROM_Address;
-          for(int i = 3;i <= 9;++i){
-            PPMMODE_STABILIZE[2] = i*100;
-            for(int j = 0;j < 14;++j){
-                PPM_Transmit(PPMMODE_STABILIZE); //7*14*20 = 1960で2秒間かけてプロペラ回転
-            }
-          }
-          for(int i = 0;i < 250;++i){ //5*1000/20 = 250より、5秒間Stablizeで加速する。
-            PPM_Transmit(PPMMODE_STABILIZE);
-          }
-          EEPROM.write(0,AUTO); //次に遷移
-        	plane_condition = AUTO;
-          break;
 
         case AUTO://離陸判定後、仕様変更あり
           EEPROM.write(EEPROM_Address,4); //ログ残し用
@@ -134,7 +95,7 @@ void loop() {
             break;
           }else{//2回目以降のループでは、他の変数に時刻を記録
             time_auto = millis();
-            if(time_auto - time_auto_zero > 120000){//2分間
+            if(time_auto - time_auto_zero > 30000){//30秒間
               EEPROM.write(0,DEEPSTALL); //次に遷移
               plane_condition = DEEPSTALL;
               break;
@@ -160,14 +121,6 @@ void loop() {
          rc_ppm = digitalRead(inpin);
          digitalWrite(outpin,rc_ppm);
        }
-//      while(millis()<60000){//極限まで処理のサイクル数を減らさないとパススルー出来なかったので、このような書き方になっている
-//        rc_ppm = PIND & _BV(7);
-//        if(rc_ppm == 0){
-//          PORTC &= ~_BV(PC4);   
-//        }else{
-//          PORTC |= _BV(PC4);
-//        }
-//      }
     }
 
 
