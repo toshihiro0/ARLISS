@@ -22,5 +22,5 @@ void loop()
   LoRa.print(number);
   LoRa.print("\r");
 	++number;
-	delay(1000);
+	delay(3000);
 }
