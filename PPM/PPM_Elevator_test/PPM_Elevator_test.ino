@@ -7,7 +7,7 @@ void setup()
 
 void loop()
 {
-    int ch[8] = {500,500,0,500,850,0,0,0};
+    int ch[8] = {500,500,0,500,305,0,0,0};
     int i,a = 1;
     while(true){
         if(ch[1] == 900 || ch[1] == 100){

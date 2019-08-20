@@ -2,7 +2,7 @@
  * PPMによりフライトモードを変更するためのコード
  * Toshihiro Suzuki
  *****************************************/
-#define outpin 13
+#define outpin 3
 
 void setup(){
   Serial.begin(9600);
@@ -27,13 +27,13 @@ void ChangeFlightModeTest(int ch[8]){
      OnePulth(ch[i]);
   }
 
-  OnePulth(20000-ppmWaitTimeSum);
+  OnePulth(19000-ppmWaitTimeSum);
 }
 
 void loop(){
   int ch[8];
   int flightmode1[8]={0,0,0,0,165,0,0,0};
-  int flightmode2[8]={0,0,0,0,425,0,0,0};
+  int flightmode2[8]={0,0,0,0,415,0,0,0};
   int flightmode3[8]={0,0,0,0,815,0,0,0};
   int j;
   
