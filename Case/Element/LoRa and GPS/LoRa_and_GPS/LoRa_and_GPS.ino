@@ -25,9 +25,9 @@ void loop()
         char c = Serial.read();
         gps.encode(c);
         if (gps.location.isUpdated()){
-            LoRa.print("LAT=");delay(100);LoRa.println(gps.location.lat(), 6);delay(100);LoRa.print("\r");delay(500);
-            LoRa.print("LONG=");delay(100);LoRa.println(gps.location.lng(), 6);delay(100);LoRa.print("\r");delay(500);
-            LoRa.print("ALT=");delay(100);LoRa.println(gps.altitude.meters(),6);delay(100);LoRa.print("\r");delay(500);
+            LoRa.print("LAT=");delay(100);LoRa.println(gps.location.lat(), 6);delay(100);delay(500);
+            LoRa.print("LONG=");delay(100);LoRa.println(gps.location.lng(), 6);delay(100);delay(500);
+            LoRa.print("ALT=");delay(100);LoRa.println(gps.altitude.meters(),6);delay(100);delay(500);
         }
     }
 }

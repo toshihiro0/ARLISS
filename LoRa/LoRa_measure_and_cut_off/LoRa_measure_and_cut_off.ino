@@ -9,8 +9,8 @@
 #define LoRa_sw 6 //LoRaの電源ピン
 #define LoRa_rst 7 //LoRaのRstピン
 
-#define airpressure_on_the_ground 100853.04 //高度計算用の地上の気圧(Pa)
-static const float temperature_on_the_ground = 34.91; //高度計算用の地上の気温(℃)
+#define airpressure_on_the_ground 99526.89 //高度計算用の地上の気圧(Pa)
+static const float temperature_on_the_ground = 29.53; //高度計算用の地上の気温(℃)
 static const float temperature_correction = 273.15;
 
 SoftwareSerial LoRa(8,9);
@@ -59,6 +59,10 @@ void loop()
             LoRa.print("Yes,sir\r");
             nichromcut2();
             delay(100);
+        }else if(strstr(buf,"cutoffall")!= NULL){
+            LoRa.print("Yes,sir\r");
+            nichromcutall();
+            delay(100);
         }
     }
 }
@@ -105,5 +109,16 @@ void nichromcut2()
 {
     digitalWrite(nichrome_pin_2,HIGH);
     delay(6000);
+    digitalWrite(nichrome_pin_2,LOW);
+}
+
+void nichromcutall()
+{
+    digitalWrite(nichrome_pin_1,HIGH);
+    delay(4000);
+    digitalWrite(nichrome_pin_1,LOW);
+    delay(100);
+    digitalWrite(nichrome_pin_2,HIGH);
+    delay(4000);
     digitalWrite(nichrome_pin_2,LOW);
 }

@@ -4,10 +4,13 @@ void setup()
     analogReference(DEFAULT);
 }
 
-int analogpin = 7;
+int analogpin[3] = {0,6,7};
 
 void loop()
 {
-    Serial.println(analogRead(analogpin));
-    delay(20);
+    int i;
+    for(i = 0;i < 3;++i){
+        Serial.println(analogRead(analogpin[i]));
+        delay(500);
+    }
 }

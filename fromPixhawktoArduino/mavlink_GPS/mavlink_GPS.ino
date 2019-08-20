@@ -2,20 +2,13 @@
 #include <SoftwareSerial.h>
 #include <math.h>
  
-#define LoRa_sw 6
-#define LoRa_rst 18
-SoftwareSerial LoRa(17,19);
+SoftwareSerial SerialMavlink(2,3);
  
 void setup()
 {
-    pinMode(LoRa_sw,OUTPUT);
-    digitalWrite(LoRa_sw,HIGH);
-    pinMode(LoRa_rst,OUTPUT);
-    digitalWrite(LoRa_rst,HIGH);
 
-    Serial.begin(57600); //Mavlink
-    LoRa.begin(19200); //LoRa
- 
+    SerialMavlink.begin(57600); //Mavlink
+    Serial.begin(57600);
     request_datastream();
 }
  
@@ -29,22 +22,29 @@ void MavLink_receive()
 {
     mavlink_message_t msg;
     mavlink_status_t status;
- 
-    while(Serial.available()){
-        uint8_t c= Serial.read();
+    float latitude,longtitude,altitude,velocity;
+    while(SerialMavlink.available()){
+        uint8_t c= SerialMavlink.read();
  
         //Get new message
         if(mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)){
  
             //Handle new message from autopilot
             switch(msg.msgid){
-                case MAVLINK_MSG_ID_ATTITUDE:{
-                    mavlink_attitude_t packet;
-                    mavlink_msg_attitude_decode(&msg, &packet);
-                    LoRa.print("roll:");delay(100);LoRa.println(packet.roll/M_PI*180.0);delay(500);
-                    LoRa.print("pitch:");delay(100);LoRa.println(packet.pitch/M_PI*180.0);delay(500);
-                    LoRa.print("yaw:");delay(100);LoRa.println(packet.yaw/M_PI*180.0);delay(500);
-                }break;
+                case MAVLINK_MSG_ID_GPS_RAW_INT:
+                {
+                    mavlink_gps_raw_int_t packet;
+                    mavlink_msg_gps_raw_int_decode(&msg, &packet);
+                    Serial.print("Lat:");
+                    latitude = packet.lat;
+                    Serial.println(latitude);
+                    Serial.print("Long:");
+                    longtitude = packet.lon;
+                    Serial.println(longtitude);
+                    Serial.print("Alt:");
+                    altitude = packet.alt;
+                    Serial.println(altitude);
+                }
             }
         }
     }
@@ -89,5 +89,5 @@ void request_datastream() {
   mavlink_msg_request_data_stream_pack(_system_id, _component_id, &msg, _target_system, _target_component, _req_stream_id, _req_message_rate, _start_stop);
   uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);  // Send the message (.write sends as bytes)
  
-  Serial.write(buf, len); //Write data to serial port
+  SerialMavlink.write(buf, len); //Write data to serial port
 }

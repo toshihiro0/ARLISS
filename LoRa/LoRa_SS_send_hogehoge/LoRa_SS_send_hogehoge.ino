@@ -15,12 +15,12 @@ void setup()
    delay(2000); //LoRa起動待ち
 }
 
-int number = 0;
 void loop() 
 {
-  LoRa.print("hogehoge");
-  LoRa.print(number);
-  LoRa.print("\r");
-	++number;
-	delay(3000);
+  int i;
+  for(i = 0;i < 10;++i){
+    LoRa.print("hogehoge");
+    LoRa.println(i);
+    delay(1000);
+  }
 }
