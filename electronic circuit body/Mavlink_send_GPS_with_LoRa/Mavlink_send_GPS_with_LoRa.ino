@@ -15,7 +15,7 @@ void setup()
 
     Serial.begin(57600); //Mavlink
     LoRa.begin(19200); //LoRa
- 
+    delay(2000);
     request_datastream();
 }
  
@@ -29,7 +29,7 @@ void MavLink_receive()
 {
     mavlink_message_t msg;
     mavlink_status_t status;
- 
+    float latitude,longtitude,altitude1,velocity;
     while(Serial.available()){
         uint8_t c= Serial.read();
  
@@ -38,13 +38,20 @@ void MavLink_receive()
  
             //Handle new message from autopilot
             switch(msg.msgid){
-                case MAVLINK_MSG_ID_ATTITUDE:{
-                    mavlink_attitude_t packet;
-                    mavlink_msg_attitude_decode(&msg, &packet);
-                    LoRa.print("roll:");delay(40);LoRa.println(packet.roll/M_PI*180.0);delay(300);
-                    LoRa.print("pitch:");delay(40);LoRa.println(packet.pitch/M_PI*180.0);delay(300);
-                    LoRa.print("yaw:");delay(40);LoRa.println(packet.yaw/M_PI*180.0);delay(300);
-                }break;
+                case MAVLINK_MSG_ID_GPS_RAW_INT:
+                {
+                    mavlink_gps_raw_int_t packet;
+                    mavlink_msg_gps_raw_int_decode(&msg, &packet);
+                    LoRa.print("Lat:");delay(40);
+                    latitude = packet.lat;
+                    LoRa.println(latitude);delay(500);
+                    LoRa.print("Long:");delay(40);
+                    longtitude = packet.lon;
+                    LoRa.println(longtitude);delay(600);
+                    LoRa.print("Alt:");delay(40);
+                    altitude1 = packet.alt;
+                    LoRa.println(altitude1);delay(500);
+                }
             }
         }
     }

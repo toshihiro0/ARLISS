@@ -1,9 +1,9 @@
 #include <SoftwareSerial.h>
 
 #define LoRa_sw 6
-#define LoRa_rst 18
+#define LoRa_rst 7
 
-SoftwareSerial LoRa(17,19);
+SoftwareSerial LoRa(8,9);
 
 void setup()
 {
