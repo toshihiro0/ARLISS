@@ -152,17 +152,17 @@ void MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint() //使わない
                         altitude = packet.alt/1e3;
                         if(LoRa_send_Mode == 0){
                             LoRa.print("Lat:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_STABILIZE);}
-                            LoRa.println(latitude);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_STABILIZE);}
+                            LoRa.println(latitude);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_STABILIZE);}
                         }else if(LoRa_send_Mode == 1){
                             LoRa.print("Long:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_STABILIZE);}
-                            LoRa.println(longtitude);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_STABILIZE);}
+                            LoRa.println(longtitude);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_STABILIZE);}
                         }else if(LoRa_send_Mode == 2){
                             LoRa.print("Alt:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_STABILIZE);}
-                            LoRa.println(altitude);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_STABILIZE);}
+                            LoRa.println(altitude);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_STABILIZE);}
                         }else if(LoRa_send_Mode == 3){
                             distance = calculate_distance(latitude,longtitude);
-                            LoRa.print("Distance:");for(i = 0;i < 5;++i){PPM_Transmit(PPMMODE_STABILIZE);}
-                            LoRa.println(distance);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_STABILIZE);}
+                            LoRa.print("Distance:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_STABILIZE);}
+                            LoRa.println(distance);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_STABILIZE);}
                         }
                         ++LoRa_send_Mode;
                         if(LoRa_send_Mode == 4){
@@ -173,6 +173,7 @@ void MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint() //使わない
                 }
             }
         }
+        PPM_Transmit(PPMMODE_STABILIZE);
     }
 }
 
