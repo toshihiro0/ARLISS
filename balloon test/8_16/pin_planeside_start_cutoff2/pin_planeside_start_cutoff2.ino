@@ -3,11 +3,11 @@
 #include <EEPROM.h>
 #include <math.h>
 
-#define outpin 18 //PPM
-#define deploy_judge_pin_INPUT1  12 //一段階目溶断の抜けピン
+#define outpin 3 //PPM
+#define deploy_judge_pin_INPUT1  10 //一段階目溶断の抜けピン
 #define deploy_judge_pin_INPUT2  9 //二段階目溶断の抜けピン
 #define LoRa_sw 6 //MOSFETのスイッチピン
-#define LoRa_rst 14 //LoRaのリセット
+#define LoRa_rst 18 //LoRaのリセット
 #define LoRa_RX 17
 #define LoRa_TX 19
 
@@ -18,9 +18,9 @@
 #define AUTO 4
 #define DEEPSTALL 5
 
-#define goal_latitude 0
-#define goal_longtitude 0
-#define goal_altitude 0
+#define goal_latitude 35.7417229
+#define goal_longtitude 140.0101197
+#define goal_altitude 45.0
 #define difference_lat 111316.2056
 static const float difference_lon = cos(goal_latitude/180*M_PI)*M_PI*6378.137/180*1000;
 
@@ -63,16 +63,6 @@ void setup()
     for(i = 0;i < 300;++i){ //アーム
         PPM_Transmit(PPMMODE_Arm);
     }
-    while(digitalRead(deploy_judge_pin_INPUT1) == LOW){
-        PPM_Transmit(PPMMODE_MANUAL);
-    }//D10がGNDに挿さっている間はここで止まる
-    delay(500); //機軸伸び切り待ち
-    for(i = 3;i <= 9;++i){
-        PPMMODE_TRAINING[2] = 300;
-        for(j = 0;j < 14;++j){
-            PPM_Transmit(PPMMODE_TRAINING); //7*14*20 = 1960で2秒間かけてプロペラ回転
-        }
-    }
     PPMMODE_TRAINING[2] = 0; //Throttleは0に戻す。
 }
 
@@ -102,7 +92,7 @@ void loop()
             EEPROM.write(EEPROM_Address,TRAINING); //ログ残し用
             ++EEPROM_Address;
             
-            for(int i = 0;i < 50;++i){ //加速1秒間
+            for(int i = 0;i < 100;++i){ //加速2秒間
                 PPM_Transmit(PPMMODE_TRAINING);
             }
 
@@ -127,7 +117,7 @@ void loop()
             ++EEPROM_Address;
 
             for(int i = 3;i <= 9;++i){
-                PPMMODE_STABILIZE[2] = 300;
+                PPMMODE_STABILIZE[2] = i*100;
                 for(int j = 0;j < 14;++j){
                     PPM_Transmit(PPMMODE_STABILIZE); //7*14*20 = 1960で2秒間かけてプロペラ回転
                 }
