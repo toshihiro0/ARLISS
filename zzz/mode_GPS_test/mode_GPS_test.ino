@@ -40,6 +40,8 @@ int PPMMODE_STABILIZE[8] = {500,500,0,500,425,500,500,0}; //300から徐々に�
 int PPMMODE_AUTO[8] = {500,500,0,500,815,500,500,0};
 int PPMMODE_DEEPSTALL[8] = {500,900,0,500,425,500,500,0}; //900側がエレベーター上げ
 
+long time1,time2;
+
 void setup()
 {
     pinMode(outpin,OUTPUT);
@@ -53,6 +55,7 @@ void setup()
 
     Serial.begin(57600); //Pixhawkとの通信
     request_datastream(); //データ吸出し
+    time1 = millis();
 }
 
 void loop()
@@ -171,6 +174,12 @@ void MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint() //使わない
                         return;
                     }//ここまで540ms
                 }
+            }
+        }
+        time2 = millis();
+        if((time2-time1) > 30000){
+            while(true){
+                PPM_Transmit(PPMMODE_AUTO);
             }
         }
         PPM_Transmit(PPMMODE_STABILIZE);
