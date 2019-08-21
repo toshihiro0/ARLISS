@@ -60,8 +60,6 @@ void setup()
     LoRa.begin(19200); //LoRaとの通信開始
     Serial.begin(57600); //Pixhawkとの通信
 
-    request_datastream(); //データ吸出し
-
     EEPROM.write(0,0);
     int i,j;
     for(i = 0;i < 300;++i){ //アーム
@@ -82,6 +80,7 @@ void loop()
                 PPM_Transmit(PPMMODE_TRAINING);
             }
             while(true){
+                time_deploy2_end = millis();
                 if(digitalRead(deploy_judge_pin_INPUT2) == HIGH){
                     EEPROM.write(0,TRAINING); //再起動しても大丈夫なように、先に書き込んでおきたい
                     plane_condition = TRAINING;
@@ -96,7 +95,15 @@ void loop()
         case TRAINING:
             EEPROM.write(EEPROM_Address,TRAINING); //ログ残し用
             ++EEPROM_Address;
-            
+
+            mission_count(); //RTLに入ってもいい様に、HOMEだけ書き換える。
+            for(i = 0;i < 5;++i){ //TELEM2のコードが抜けてたら死ぬ。ので、5回まで(5回入れたら完璧に入る。)
+    	        MavLink_receive();
+    	        delay(10);
+   	        }
+
+            request_datastream(); //データ吸出し
+
             for(i = 0;i < 100;++i){ //2*1000/20 = 100 加速2秒間
                 PPM_Transmit(PPMMODE_TRAINING);
             }
@@ -145,7 +152,7 @@ void loop()
             }
             
             time_auto_zero = millis();
-            MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint();
+            MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint(); //AUTOの間はここにいる。
 
             EEPROM.write(0,DEEPSTALL); //次に遷移
             plane_condition = DEEPSTALL;
@@ -232,7 +239,7 @@ void request_datastream()
     Serial.write(buf, len); //Write data to serial port
 }
 
-void MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint() //使わないけど...
+void MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint()
 {
     int i;
     mavlink_message_t msg;
@@ -284,7 +291,7 @@ void MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint() //使わない
                 }
             }
         }
-        time_auto = millis();
+        time_auto = millis(); //通信出来てなかったらずっとここにいる。
         if((time_auto - time_auto_zero) > 18000){
             return;
         }
@@ -368,19 +375,19 @@ void MavLink_receive_GPS_and_send_with_LoRa_Deep_Stall() //使わないけど...
                     altitude = packet.alt/1e3;
                     if(LoRa_send_Mode == 0){
                         LoRa.print("Lat:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
-                        LoRa.println(latitude);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
+                        LoRa.println(latitude);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
                     }else if(LoRa_send_Mode == 1){
                         LoRa.print("Long:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
-                        LoRa.println(longtitude);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
+                        LoRa.println(longtitude);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
                     }else if(LoRa_send_Mode == 2){
                         LoRa.print("Alt:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
-                        LoRa.println(altitude);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
+                        LoRa.println(altitude);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
                     }
                     ++LoRa_send_Mode;
                     if(LoRa_send_Mode == 3){
                         distance = calculate_distance(latitude,longtitude);
                         LoRa.print("Distance:");for(i = 0;i < 5;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
-                        LoRa.println(distance);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
+                        LoRa.println(distance);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
                         LoRa_send_Mode = 0;
                     }
                 return;
@@ -394,4 +401,93 @@ float calculate_distance(float latitude,float longtitude)
 {
     float distance = sqrt((latitude-goal_latitude)*(latitude-goal_latitude)*difference_lat*difference_lat+(longtitude-goal_longtitude)*(longtitude-goal_longtitude)*difference_lon*difference_lon);
     return distance;
+}
+
+void mission_count()
+{
+    //Step #1 of uploading a new waypoint
+    uint8_t _system_id = 255; // system id of sending station. 255 is Ground control software
+    uint8_t _component_id = 2; // component id of sending station 2 works fine
+    uint8_t _target_system = 1; // Pixhawk id
+    uint8_t _target_component = 0; // Pixhawk component id, 0 = all (seems to work fine)
+    
+    uint16_t count = 3; // How many items to upload (HOME coordinates are always the first way-point)
+    
+    // Initialize the required buffers
+    mavlink_message_t msg;
+    uint8_t buf[MAVLINK_MAX_PACKET_LEN];
+    
+    // Pack the message
+    mavlink_msg_mission_count_pack(_system_id, _component_id, &msg, _target_system, _target_component, count);
+    //uint8_t system_id, uint8_t component_id, mavlink_message_t* msg, uint8_t target_system, uint8_t target_component, uint16_t count
+    
+    // Copy the message to the send buffer
+    uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
+    
+    // Send the message (.write sends as bytes)
+    Serial.write(buf, len);
+}
+
+void MavLink_receive()
+{ 
+    mavlink_message_t msg;
+    mavlink_status_t status;
+    
+    while(Serial.available()){
+        uint8_t c= Serial.read();
+        
+        //Get new message
+        if(mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)){
+            //Handle new message from autopilot
+            switch(msg.msgid){
+            
+            // Step 2 uploading a new waypoint - Check for mission replies
+            case MAVLINK_MSG_ID_MISSION_REQUEST:
+            {
+                mavlink_mission_request_t missionreq;
+                mavlink_msg_mission_request_decode(&msg, &missionreq);
+        
+                if (missionreq.seq == 0) {
+                create_home();
+                }
+            }
+            break;
+            }
+        }
+    }
+}
+
+void create_home() {
+    //Step 3 of uploading a new waypoint (send HOME coordinates)
+    uint8_t _system_id = 255; // system id of sending station. 255 is Ground control software
+    uint8_t _component_id = 2; // component id of sending station 2 works fine
+    uint8_t _target_system = 1; // Pixhawk id
+    uint8_t _target_component = 0; // Pixhawk component id, 0 = all (seems to work fine)
+    
+    uint16_t seq = 0; // Sequence number
+    uint8_t frame = 0; // Set target frame to global default
+    uint16_t command = MAV_CMD_NAV_WAYPOINT; // Specific command for PX4
+    uint8_t current = 0; // Guided mode waypoint
+    uint8_t autocontinue = 0; // Always 0
+    float param1 = 0; // Loiter time
+    float param2 = 0; // Acceptable range from target - radius in meters
+    float param3 = 0; // Pass through waypoint
+    float param4 = 0; // Desired yaw angle
+    float x = goal_latitude; // Latitude - degrees
+    float y = goal_longtitude; // Longitude - degrees
+    float z = goal_altitude; // Altitude - meters
+    
+    // Initialize the required buffers
+    mavlink_message_t msg;
+    uint8_t buf[MAVLINK_MAX_PACKET_LEN];
+    
+    // Pack the message
+    mavlink_msg_mission_item_pack(_system_id, _component_id, &msg, _target_system, _target_component, seq, frame, command, current, autocontinue, param1, param2, param3, param4, x, y, z);
+    //uint16_t mavlink_msg_mission_item_pack(uint8_t system_id, uint8_t component_id, mavlink_message_t* msg, uint8_t target_system, uint8_t target_component, uint16_t seq, uint8_t frame, uint16_t command, uint8_t current, uint8_t autocontinue, float param1, float param2, float param3, float param4, float x, float y, float z
+    
+    // Copy the message to the send buffer
+    uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
+    
+    // Send the message (.write sends as bytes)
+    Serial.write(buf, len);
 }

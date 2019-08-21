@@ -167,7 +167,7 @@ void loop()
             }
             
             time_auto_zero = millis();
-            MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint()
+            MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint(); //AUTOの間はここにいる。
 
             EEPROM.write(0,DEEPSTALL); //次に遷移
             plane_condition = DEEPSTALL;
@@ -306,7 +306,7 @@ void MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint() //使わない
                 }
             }
         }
-        time_auto = millis();
+        time_auto = millis(); //通信出来てなかったらずっとここにいる。
         if((time_auto - time_auto_zero) > 18000){
             return;
         }
@@ -401,7 +401,7 @@ void MavLink_receive_GPS_and_send_with_LoRa_Deep_Stall() //使わないけど...
                     ++LoRa_send_Mode;
                     if(LoRa_send_Mode == 3){
                         distance = calculate_distance(latitude,longtitude);
-                        LoRa.print("Distance:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
+                        LoRa.print("Distance:");for(i = 0;i < 5;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
                         LoRa.println(distance);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
                         LoRa_send_Mode = 0;
                     }
