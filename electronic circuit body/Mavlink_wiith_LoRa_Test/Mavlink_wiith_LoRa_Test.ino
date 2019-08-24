@@ -15,6 +15,7 @@ void setup()
 
     Serial.begin(57600); //Mavlink
     LoRa.begin(19200); //LoRa
+    delay(2000);
  
     request_datastream();
 }
