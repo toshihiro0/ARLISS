@@ -292,7 +292,7 @@ void MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint()
             }
         }
         time_auto = millis(); //通信出来てなかったらずっとここにいる。
-        if((time_auto - time_auto_zero) > 18000){
+        if((time_auto - time_auto_zero) > 180000){
             return;
         }
         PPM_Transmit(PPMMODE_AUTO);
