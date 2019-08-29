@@ -18,9 +18,9 @@
 #define AUTO 4
 #define DEEPSTALL 5
 
-#define goal_latitude 35.6596325
-#define goal_longtitude 140.0737739
-#define goal_altitude 42.0
+#define goal_latitude 35.7954471
+#define goal_longtitude 139.8910135
+#define goal_altitude 5.0
 #define difference_lat 111316.2056
 
 static const float difference_lon = cos(goal_latitude/180*M_PI)*M_PI*6378.137/180*1000;
