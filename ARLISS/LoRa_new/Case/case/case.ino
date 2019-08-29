@@ -248,19 +248,19 @@ void nichromecut2()
 
 void LoRa_change_destination()
 {
-    LoRa.write("config\r");
+    LoRa.write("config\r\n");
     delay(10);
     LoRa_reset();
     delay(2000);
-    LoRa.write("2\r");
+    LoRa.write("2\r\n");
     delay(10);
-    LoRa.write("g 0\r");
+    LoRa.write("g 0\r\n");
     delay(10);
-    LoRa.write("q 2\r");
+    LoRa.write("q 2\r\n");
     delay(10);
-    LoRa.write("save\r");
+    LoRa.write("save\r\n");
     delay(10);
-    LoRa.write("start\r");
+    LoRa.write("start\r\n");
 
     return;
 }
@@ -275,15 +275,15 @@ void LoRa_reset()
 
 void senttoLora(float height)
 {
-    LoRa.print("Case has released.\r");
+    LoRa.print("Case has released.\r\n");
     delay(500);
-    LoRa.print("The pointed height has arrived.\r");
+    LoRa.print("The pointed height has arrived.\r\n");
     delay(500);
     LoRa.print("Altitude: ");
     delay(500);
     LoRa.println(height);
     delay(500);
-    LoRa.print("The aircraft has released.\r");
+    LoRa.print("The aircraft has released.\r\n");
     delay(500);
     return;
 }
@@ -295,9 +295,9 @@ void gps_transmission()
             char c = Serial.read();
             gps.encode(c);
             if(gps.location.isUpdated()){
-                LoRa.print("LAT=");delay(100);LoRa.print(gps.location.lat(),10);delay(100);LoRa.print("\r");delay(500);
-                LoRa.print("LONG=");delay(100);LoRa.print(gps.location.lng(),10);delay(100);LoRa.print("\r");delay(500);
-                LoRa.print("ALT=");delay(100);LoRa.println(gps.altitude.meters(),10);delay(100);LoRa.print("\r");delay(500);
+                LoRa.print("LAT=");delay(100);LoRa.println(gps.location.lat(),10);delay(100);delay(500);
+                LoRa.print("LONG=");delay(100);LoRa.println(gps.location.lng(),10);delay(100);delay(500);
+                LoRa.print("ALT=");delay(100);LoRa.println(gps.altitude.meters(),10);delay(100);delay(500);
             }
         }
         delay(500);

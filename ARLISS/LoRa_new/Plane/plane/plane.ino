@@ -87,7 +87,7 @@ void setup()
         PPM_Transmit(PPMMODE_Arm);
     }
     
-    LoRa.write("cutoff\r"); //2回目を切るよう、ケースに伝える。
+    LoRa.write("cutoff\r\n"); //2回目を切るよう、ケースに伝える。
 }
 
 void loop()
@@ -452,7 +452,7 @@ float calculate_distance(float latitude,float longtitude)
 void LoRa_change_destination()
 {
     int i;
-    LoRa.write("config\r");
+    LoRa.write("config\r\n");
     PPM_Transmit(PPMMODE_STABILIZE); //20ms
     digitalWrite(LoRa_rst,LOW);
     delay(1);
@@ -460,13 +460,13 @@ void LoRa_change_destination()
     for(i = 0;i < 100;++i){ //2s,2000ms
         PPM_Transmit(PPMMODE_STABILIZE);
     }
-    LoRa.write("2\r");
+    LoRa.write("2\r\n");
     PPM_Transmit(PPMMODE_STABILIZE); //20ms
-    LoRa.write("g 0\r");
+    LoRa.write("g 0\r\n");
     PPM_Transmit(PPMMODE_STABILIZE); //20ms
-    LoRa.write("q 2\r");
+    LoRa.write("q 2\r\n");
     PPM_Transmit(PPMMODE_STABILIZE); //20ms
-    LoRa.write("save\r");
+    LoRa.write("save\r\n");
     PPM_Transmit(PPMMODE_STABILIZE); //20ms
-    LoRa.write("start\r"); //ここまで、2100ms
+    LoRa.write("start\r\n"); //ここまで、2100ms
 }
