@@ -2,7 +2,6 @@
 #include <SparkFunBME280.h>
 #include <TinyGPS++.h>
 
-//#defineとstatic const のどちらが良いか僕にはわからない。以下ピン設定
 //#defineのがメモリを食わないので、#defineにしておきます
 //EEPROMによる再起動の冗長系をまだ入れていません。
 //時間による冗長系をまだ入れていません。
@@ -18,7 +17,7 @@
 
 static const float airpressure_on_the_ground = 101540.265; //高度計算用の地上の気圧(Pa)
 static const float temperature_on_the_ground = 23.82; //高度計算用の地上の気温(℃)
-static const float release_height = 2000; //切り離し高度(m)
+static const float release_height = 2000.0; //切り離し高度(m)
 
 SoftwareSerial LoRa(8,9);
 BME280 air_pressure_sensor; //気圧センサBME280
@@ -62,7 +61,7 @@ void loop()
     //cds(); //明暗の判定
     //digitalWrite(LoRa_sw,HIGH); //ロケットから放出されたので、通信を開始してOK
     //LoRa.begin(19200); //通信開始には多少待つ必要があるみたいだけど...
-    analogReference(DEFAULT)
+    analogReference(DEFAULT);
     cds();
     height = heightjudge(); //高度判定
     nichromecut(); //ニクロム線カット
@@ -74,26 +73,28 @@ void cds()
 {
     int i,j,sum = 0;
     int analogpin[3] = {0,6,7};
-    static const int judge_value = 750;
+    static const int judge_value = 600;
     int judge_times = 0;     
     while(judge_times < 3){ //3回連続OKでwhile抜ける
         for(i = 0;i < 5;++i){
-            int sum_temp = 0;
+            int cds_voltage_value_temp_sum = 0;
             for(j = 0;j < 3;++j){
-                sumtemp += analogRead(analogpin[j]); //アナログピンの読み取り
+                cds_voltage_value_temp_sum += analogRead(analogpin[j]); //アナログピンの読み取り
             }
-            sum_temp /= 3;
-            sum += sum_temp;
-            delay(2); //少しずつ遅らせて取らないと、何回も計測する意味が無い
+            cds_voltage_value_temp_sum /= 3;
+            sum += cds_voltage_value_temp_sum;
+            delay(60); //少しずつ遅らせて取らないと、何回も計測する意味が無い
         }
         int value = sum/5;
         if(value > judge_value){ //暗い時はVoltageが小さい、明るい時はVoltageが大きい
             sum = 0;
             ++judge_times;
+            delay(100); //60*3*5+100 = 1000で1秒ごとに取る。
             continue; //もう一度
         }else{
             judge_times = 0;
             sum = 0; //初期化
+            delay(100);
             continue; //また計測
         }
     }
