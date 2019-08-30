@@ -18,9 +18,9 @@
 #define AUTO 4
 #define DEEPSTALL 5
 
-#define goal_latitude 35.6596325
-#define goal_longtitude 140.0737739
-#define goal_altitude 42.0
+#define goal_latitude 35.7954471
+#define goal_longtitude 139.8910135
+#define goal_altitude 5.0
 #define difference_lat 111316.2056
 
 static const float difference_lon = cos(goal_latitude/180*M_PI)*M_PI*6378.137/180*1000;
@@ -48,10 +48,7 @@ void setup()
     pinMode(outpin,OUTPUT);
     pinMode(deploy_judge_pin_INPUT1,INPUT_PULLUP);
     pinMode(deploy_judge_pin_INPUT2,INPUT_PULLUP);
-    while(digitalRead(deploy_judge_pin_INPUT1) == HIGH){}
-    /*
-    抜けピンをはじめに挿し忘れてた時に、意図せずにスロットルが回転するのを防ぐ
-    */
+
     pinMode(LoRa_sw,OUTPUT);  //LoRaの通信on
     digitalWrite(LoRa_sw,HIGH);
     pinMode(LoRa_rst,OUTPUT);
@@ -64,20 +61,12 @@ void setup()
 
     EEPROM.write(0,0);
     int i,j;
+
+    while(digitalRead(deploy_judge_pin_INPUT2) == HIGH){}
+
     for(i = 0;i < 300;++i){ //アーム
         PPM_Transmit(PPMMODE_Arm);
     }
-    while(digitalRead(deploy_judge_pin_INPUT1) == LOW){
-        PPM_Transmit(PPMMODE_MANUAL);
-    }//D10がGNDに挿さっている間はここで止まる
-    delay(500); //機軸伸び切り待ち
-    for(i = 3;i <= 9;++i){ //2秒間
-        PPMMODE_TRAINING[2] = i*100;
-        for(j = 0;j < 14;++j){
-            PPM_Transmit(PPMMODE_TRAINING); //7*14*20 = 1960で2秒間かけてプロペラ回転
-        }
-    }
-    PPMMODE_TRAINING[2] = 0; //Throttleは0に戻す。
 }
 
 void loop()
@@ -93,22 +82,11 @@ void loop()
                 PPM_Transmit(PPMMODE_TRAINING);
             }
 
-            time_deploy2_start = millis();
             while(true){
-                time_deploy2_end = millis();
                 if(digitalRead(deploy_judge_pin_INPUT2) == HIGH){
-                    EEPROM.write(0,TRAINING); //再起動しても大丈夫なように、先に書き込んでおきたい
-                    plane_condition = TRAINING;
-                    break;
-                }else if((time_deploy2_end-time_deploy2_start) > 20000){
-                    for(i = 3;i <= 9;++i){
-                        PPMMODE_TRAINING[2] = i*100;
-                        for(j = 0;j < 14;++j){
-                            PPM_Transmit(PPMMODE_TRAINING); //7*14*20 = 1960で2秒間かけてプロペラ回転、強制的に落としたい。
-                        }
-                    }
-                    EEPROM.write(0,TRAINING); //再起動しても大丈夫なように、先に書き込んでおきたい
-                    plane_condition = TRAINING;
+                    delay(3000); //抜いていきなり回るのは怖いので、delay入れる
+                    EEPROM.write(0,STABILIZE); //再起動しても大丈夫なように、先に書き込んでおきたい
+                    plane_condition = STABILIZE;
                     break;
                 }else{
                     PPM_Transmit(PPMMODE_TRAINING);//ここで一応、TRAININGのPPMを送っておく
@@ -152,7 +130,7 @@ void loop()
                 }
             }
 
-            for(i = 0;i < 150;++i){ //3*1000/20 = 150より、3秒間Stablizeで加速する。
+            for(i = 0;i < 250;++i){ //5*1000/20 = 250より、5秒間Stablizeで加速する。
                 PPM_Transmit(PPMMODE_STABILIZE);
             }
 

@@ -18,9 +18,9 @@
 #define AUTO 4
 #define DEEPSTALL 5
 
-#define goal_latitude 35.7417229
-#define goal_longtitude 140.0101197
-#define goal_altitude 45.0
+#define goal_latitude 35.6596325
+#define goal_longtitude 140.0737739
+#define goal_altitude 42.0
 #define difference_lat 111316.2056
 
 static const float difference_lon = cos(goal_latitude/180*M_PI)*M_PI*6378.137/180*1000;
@@ -28,9 +28,15 @@ static const float difference_lon = cos(goal_latitude/180*M_PI)*M_PI*6378.137/18
 SoftwareSerial LoRa(LoRa_RX,LoRa_TX); //LoRaと接続、PixhawkはSerialでつなぐ。
 
 int EEPROM_Address = 1;
-unsigned long int time_auto_zero = 0;//オートが始まった最初の時刻を格納
-unsigned long int time_auto = 0;//オートが始まってからの経過時間を格納
+
+unsigned long time_auto_zero = 0;//オートが始まった最初の時刻を格納
+unsigned long time_auto = 0;//オートが始まってからの経過時間を格納
 int LoRa_send_Mode = 0; //LoRaでどれを送るか決める。
+
+unsigned long time_deploy2_start;
+unsigned long time_deploy2_end;
+
+unsigned long Sleep_time,Training_time,Stabilize_noseup_time,Stabilize_time,Auto_time,Deep_time;
 
 int PPMMODE_Arm[8] = {500,500,0,1000,100,1000,500,0}; //アームはラダー900では足りない、1000必要
 int PPMMODE_MANUAL[8] = {500,500,0,500,100,500,500,0}; //ケースに入ってる間
@@ -42,30 +48,46 @@ int PPMMODE_DEEPSTALL[8] = {500,900,0,500,425,500,500,0}; //900側がエレベ�
 
 void setup()
 {
-    pinMode(outpin,OUTPUT);
+    int i,j;
+
+    pinMode(outpin,OUTPUT); //PPM
+
     pinMode(deploy_judge_pin_INPUT1,INPUT_PULLUP);
     pinMode(deploy_judge_pin_INPUT2,INPUT_PULLUP);
+
+    if(EEPROM.read(2) != 0){ //ここが埋まってたら少なくとも2にTRAININGの記録が残っているはず。
+        Serial.begin(57600); //Pixhawkとの通信
+        request_datastream(); //データ吸出し
+        pinMode(LoRa_sw,OUTPUT);  //LoRaの通信on
+        digitalWrite(LoRa_sw,HIGH);
+        pinMode(LoRa_rst,OUTPUT);
+        digitalWrite(LoRa_rst,HIGH);
+
+        LoRa.begin(19200); //LoRaとの通信開始
+        delay(2000);
+        return;
+    }
     while(digitalRead(deploy_judge_pin_INPUT2) == HIGH){}
-    /*
-    抜けピンをはじめに挿し忘れてた時に、意図せずにスロットルが回転するのを防ぐ
-    */
+    
+    Serial.begin(57600); //Pixhawkとの通信
+    request_datastream(); //データ吸出し
+    EEPROM.write(0,0);
+
+    while(digitalRead(deploy_judge_pin_INPUT1) == LOW){ //機体収納時ここ。
+        PPM_Transmit(PPMMODE_MANUAL);
+    }
     pinMode(LoRa_sw,OUTPUT);  //LoRaの通信on
     digitalWrite(LoRa_sw,HIGH);
     pinMode(LoRa_rst,OUTPUT);
     digitalWrite(LoRa_rst,HIGH);
 
     LoRa.begin(19200); //LoRaとの通信開始
-    Serial.begin(57600); //Pixhawkとの通信
-
-    request_datastream(); //データ吸出し
-
-    EEPROM.write(0,0);
-
-    int i,j;
-    for(i = 0;i < 300;++i){ //アーム
+    
+    for(i = 0;i < 250;++i){ //アーム
         PPM_Transmit(PPMMODE_Arm);
     }
-    PPMMODE_TRAINING[2] = 0; //Throttleは0に戻す。
+    
+    LoRa.write("cutoff\r"); //2回目を切るよう、ケースに伝える。
 }
 
 void loop()
@@ -76,11 +98,28 @@ void loop()
         case SLEEP: //溶断開始判定を受け取るまで
             EEPROM.write(EEPROM_Address,SLEEP); //ログ残し用
             ++EEPROM_Address;
+
+            Sleep_time = millis();
+            EEPROM.put(19,Sleep_time);
+
             for(i = 0;i < 10;++i){ //モード確定
                 PPM_Transmit(PPMMODE_TRAINING);
             }
+
+            time_deploy2_start = millis();
             while(true){
+                time_deploy2_end = millis();
                 if(digitalRead(deploy_judge_pin_INPUT2) == HIGH){
+                    EEPROM.write(0,TRAINING); //再起動しても大丈夫なように、先に書き込んでおきたい
+                    plane_condition = TRAINING;
+                    break;
+                }else if((time_deploy2_end-time_deploy2_start) > 20000){ //20s経っても切られなかったら、自力でプロペラを回して落ちる。
+                    for(i = 3;i <= 9;++i){
+                        PPMMODE_TRAINING[2] = i*100;
+                        for(j = 0;j < 14;++j){
+                            PPM_Transmit(PPMMODE_TRAINING); //7*14*20 = 1960で2秒間かけてプロペラ回転、強制的に落としたい。
+                        }
+                    }
                     EEPROM.write(0,TRAINING); //再起動しても大丈夫なように、先に書き込んでおきたい
                     plane_condition = TRAINING;
                     break;
@@ -94,6 +133,9 @@ void loop()
         case TRAINING:
             EEPROM.write(EEPROM_Address,TRAINING); //ログ残し用
             ++EEPROM_Address;
+
+            Training_time = millis();
+            EEPROM.put(23,Training_time);
             
             for(i = 0;i < 100;++i){ //2*1000/20 = 100 加速2秒間
                 PPM_Transmit(PPMMODE_TRAINING);
@@ -107,6 +149,9 @@ void loop()
             EEPROM.write(EEPROM_Address,2); //ログ残し用
             ++EEPROM_Address;
 
+            Stabilize_noseup_time = millis();
+            EEPROM.put(27,Stabilize_noseup_time);
+
             for(i = 0;i <= 100;++i){ //2*1000/20 = 100、強制機首上げ2秒間
                 PPM_Transmit(PPMMODE_STABILIZE_NOSEUP);
             }
@@ -119,14 +164,19 @@ void loop()
             EEPROM.write(EEPROM_Address,3); //ログ残し用
             ++EEPROM_Address;
 
+            Stabilize_time = millis();
+            EEPROM.put(31,Stabilize_time);
+
             for(i = 3;i <= 9;++i){
                 PPMMODE_STABILIZE[2] = i*100;
                 for(j = 0;j < 14;++j){
                     PPM_Transmit(PPMMODE_STABILIZE); //7*14*20 = 1960で2秒間かけてプロペラ回転
                 }
             }
+            
+            LoRa_change_destination();
 
-            for(i = 0;i < 150;++i){ //3*1000/20 = 150より、3秒間Stablizeで加速する。
+            for(i = 0;i < 145;++i){ //5000-2100で残りは2900ms,2900/20 = 145で145回でちょうど5s
                 PPM_Transmit(PPMMODE_STABILIZE);
             }
 
@@ -138,42 +188,32 @@ void loop()
             EEPROM.write(EEPROM_Address,4); //ログ残し用
             ++EEPROM_Address;
 
+            Auto_time = millis();
+            EEPROM.put(35,Auto_time);
+
             for(i = 0;i < 10;++i){//AUTO確定
                 PPM_Transmit(PPMMODE_AUTO);
             }
+            
+            time_auto_zero = millis();
+            MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint(); //AUTOの間はここにいる。
 
-            if(time_auto_zero == 0){//初めてオートに入った時刻を記録
-                time_auto_zero = millis();
-                PPM_Transmit(PPMMODE_AUTO);
-                break;
-            }else{//2回目以降のループでは、他の変数に時刻を記録
-                time_auto = millis();
-                if(time_auto - time_auto_zero > 180000){//3分間
-                    EEPROM.write(0,DEEPSTALL); //次に遷移
-                    plane_condition = DEEPSTALL;
-                    break;
-                }else{
-                    for(i = 0;i < 10;++i){ //AUTO0.2秒間
-                        PPM_Transmit(PPMMODE_AUTO);
-                    }
-                    if(MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint()){
-                        EEPROM.write(EEPROM_Address,6);
-                        ++EEPROM_Address;
-                        EEPROM.write(0,DEEPSTALL); //次に遷移
-                        plane_condition = DEEPSTALL;
-                        break;
-                    }
-                    break;
-                }
-            }
+            EEPROM.write(0,DEEPSTALL); //次に遷移
+            plane_condition = DEEPSTALL;
         break;
 
         case DEEPSTALL:
             EEPROM.write(EEPROM_Address,5); //ログ残し用
             ++EEPROM_Address;
+
+            Deep_time = millis();
+            EEPROM.put(39,Deep_time);
+
             while(true){ //ずっと
+                MavLink_receive_GPS_and_send_with_LoRa_Deep_Stall();
                 PPM_Transmit(PPMMODE_DEEPSTALL); //DEEPSTALL確定
             }
+            
         break;
 
         default:
@@ -246,58 +286,57 @@ void request_datastream()
     Serial.write(buf, len); //Write data to serial port
 }
 
-boolean MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint() //使わないけど...
+void MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint()
 {
     int i;
     mavlink_message_t msg;
     mavlink_status_t status;
-    float latitude,longtitude,altitude,velocity;
+    float latitude,longtitude,altitude,distance;
     boolean waypoint_near_flag;
-    while(Serial.available()){ //通信出来てなかったら...悲しいね...
-        uint8_t c= Serial.read();
-        //Get new message
-        if(mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)){
-            //Handle new message from autopilot
-            switch(msg.msgid){
-                case MAVLINK_MSG_ID_GPS_RAW_INT:
-                {
-                    mavlink_gps_raw_int_t packet;
-                    mavlink_msg_gps_raw_int_decode(&msg, &packet);
-                    latitude = packet.lat/1e7;
-                    longtitude = packet.lon/1e7;
-                    altitude = packet.alt/1e3;
-                    if(LoRa_send_Mode == 0){
-                        LoRa.print("Lat:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_AUTO);}
-                        LoRa.println(latitude);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_AUTO);}
-                    }else if(LoRa_send_Mode == 1){
-                        LoRa.print("Long:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_AUTO);}
-                        LoRa.println(longtitude);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_AUTO);}
-                    }else if(LoRa_send_Mode == 2){
-                        LoRa.print("Alt:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_AUTO);}
-                        LoRa.println(altitude);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_AUTO);}
-                    }
-                    waypoint_near_flag = detect_waypoint(latitude,longtitude,goal_altitude);
-                    ++LoRa_send_Mode;
-                    if(LoRa_send_Mode == 3){
-                        LoRa_send_Mode = 0;
-                    }
-                }//ここまで540ms
-                break;
+    while(true){
+        while(Serial.available()){ //通信出来てなかったら...悲しいね...
+            uint8_t c= Serial.read();
+            //Get new message
+            if(mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)){
+                //Handle new message from autopilot
+                switch(msg.msgid){
+                    case MAVLINK_MSG_ID_GPS_RAW_INT:
+                    {
+                        mavlink_gps_raw_int_t packet;
+                        mavlink_msg_gps_raw_int_decode(&msg, &packet);
+                        latitude = packet.lat/1e7;
+                        longtitude = packet.lon/1e7;
+                        altitude = packet.alt/1e3;
+                        distance = calculate_distance(latitude,longtitude);
+                        if(distance < 10.0){
+                            record_deep_stall_point(latitude,longtitude,altitude);
+                            
+                            return;
+                        }
+                        if(LoRa_send_Mode == 0){
+                            LoRa.print("Lat:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_AUTO);}
+                            LoRa.println(latitude*1e7);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_AUTO);}
+                        }else if(LoRa_send_Mode == 1){
+                            LoRa.print("Long:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_AUTO);}
+                            LoRa.println(longtitude*1e7);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_AUTO);}
+                        }else if(LoRa_send_Mode == 2){
+                            LoRa.print("Alt:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_AUTO);}
+                            LoRa.println(altitude*1e3);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_AUTO);}
+                        }else if(LoRa_send_Mode == 3){
+                            LoRa.print("Distance:");for(i = 0;i < 5;++i){PPM_Transmit(PPMMODE_AUTO);}
+                            LoRa.println(distance);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_AUTO);}
+                        }
+                        ++LoRa_send_Mode;
+                        if(LoRa_send_Mode == 4){
+                            LoRa_send_Mode = 0;
+                        }
+                    }//ここまで540ms
+                    break;
+                }
             }
-            if(waypoint_near_flag){
-                record_deep_stall_point(latitude,longtitude,altitude);
-            }
-            return waypoint_near_flag;
         }
-        for(i = 0;i < 10;++i){
-            PPM_Transmit(PPMMODE_AUTO);
-        }
-        return false; 
-    }
-    for(i = 0;i < 10;++i){
         PPM_Transmit(PPMMODE_AUTO);
     }
-    return false;
 }
 
 void OnePulth(int PPMtime)
@@ -344,16 +383,6 @@ void PPM_Transmit(int ch[8])
     } //breakは無いが、returnで戻るようになっている。
 }*/
 
-boolean detect_waypoint(float latitude,float longtitude,float altitude)
-{
-    float distance = sqrt((latitude-goal_latitude)*(latitude-goal_latitude)*difference_lat*difference_lat+(longtitude-goal_longtitude)*(longtitude-goal_longtitude)*difference_lon*difference_lon);
-    if(distance < 10.0){
-        return true;
-    }else{
-        return false;
-    }
-}
-
 void record_deep_stall_point(float latitude,float longtitude,float altitude)
 {
     EEPROM.put(EEPROM_Address,latitude);
@@ -365,54 +394,79 @@ void record_deep_stall_point(float latitude,float longtitude,float altitude)
     return;
 }
 
-void MavLink_receive_GPS_and_send_with_LoRa_Deep_Stall() //使わないけど...
+void MavLink_receive_GPS_and_send_with_LoRa_Deep_Stall()
 {
+    LoRa_send_Mode = 0;
     int i;
     mavlink_message_t msg;
     mavlink_status_t status;
     float latitude,longtitude,altitude,velocity,distance;
-    while(Serial.available()){ //通信出来てなかったら...悲しいね...
-        uint8_t c= Serial.read();
-        //Get new message
-        if(mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)){
-            //Handle new message from autopilot
-            switch(msg.msgid){
-                case MAVLINK_MSG_ID_GPS_RAW_INT:
-                {
-                    mavlink_gps_raw_int_t packet;
-                    mavlink_msg_gps_raw_int_decode(&msg, &packet);
-                    latitude = packet.lat/1e7;
-                    longtitude = packet.lon/1e7;
-                    altitude = packet.alt/1e3;
-                    if(LoRa_send_Mode == 0){
-                        LoRa.print("Lat:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
-                        LoRa.println(latitude);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
-                    }else if(LoRa_send_Mode == 1){
-                        LoRa.print("Long:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
-                        LoRa.println(longtitude);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
-                    }else if(LoRa_send_Mode == 2){
-                        LoRa.print("Alt:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
-                        LoRa.println(altitude);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
-                    }
-                    ++LoRa_send_Mode;
-                    if(LoRa_send_Mode == 3){
+    while(true){
+        while(Serial.available()){ //通信出来てなかったら...悲しいね...
+            uint8_t c= Serial.read();
+            //Get new message
+            if(mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)){
+                //Handle new message from autopilot
+                switch(msg.msgid){
+                    case MAVLINK_MSG_ID_GPS_RAW_INT:
+                    {
+                        mavlink_gps_raw_int_t packet;
+                        mavlink_msg_gps_raw_int_decode(&msg, &packet);
+                        latitude = packet.lat/1e7;
+                        longtitude = packet.lon/1e7;
+                        altitude = packet.alt/1e3;
                         distance = calculate_distance(latitude,longtitude);
-                        LoRa.print("Distance:");for(i = 0;i < 5;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
-                        LoRa.println(distance);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
-                        LoRa_send_Mode = 0;
-                    }
-                }//ここまで540ms
-                break;
+                        if(LoRa_send_Mode == 0){
+                            LoRa.print("Lat:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
+                            LoRa.println(latitude*1e7);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
+                        }else if(LoRa_send_Mode == 1){
+                            LoRa.print("Long:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
+                            LoRa.println(longtitude*1e7);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
+                        }else if(LoRa_send_Mode == 2){
+                            LoRa.print("Alt:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
+                            LoRa.println(altitude*1e3);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
+                        }else if(LoRa_send_Mode == 3){
+                            LoRa.print("Distance:");for(i = 0;i < 5;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
+                            LoRa.println(distance);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_DEEPSTALL);}
+                        }
+                        ++LoRa_send_Mode;
+                        if(LoRa_send_Mode == 4){
+                            LoRa_send_Mode = 0;
+                        }
+                        return;
+                    }//ここまで640ms
+                    break;
+                }
             }
-            return;
         }
-        return;
+        PPM_Transmit(PPMMODE_DEEPSTALL);
     }
-    return;
 }
 
 float calculate_distance(float latitude,float longtitude)
 {
     float distance = sqrt((latitude-goal_latitude)*(latitude-goal_latitude)*difference_lat*difference_lat+(longtitude-goal_longtitude)*(longtitude-goal_longtitude)*difference_lon*difference_lon);
     return distance;
+}
+
+void LoRa_change_destination()
+{
+    int i;
+    LoRa.write("config\r");
+    PPM_Transmit(PPMMODE_STABILIZE); //20ms
+    digitalWrite(LoRa_rst,LOW);
+    delay(1);
+    digitalWrite(LoRa_rst,HIGH);
+    for(i = 0;i < 100;++i){ //2s,2000ms
+        PPM_Transmit(PPMMODE_STABILIZE);
+    }
+    LoRa.write("2\r");
+    PPM_Transmit(PPMMODE_STABILIZE); //20ms
+    LoRa.write("g 0\r");
+    PPM_Transmit(PPMMODE_STABILIZE); //20ms
+    LoRa.write("q 2\r");
+    PPM_Transmit(PPMMODE_STABILIZE); //20ms
+    LoRa.write("save\r");
+    PPM_Transmit(PPMMODE_STABILIZE); //20ms
+    LoRa.write("start\r"); //ここまで、2100ms
 }

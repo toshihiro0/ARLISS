@@ -29,7 +29,7 @@ void MavLink_receive()
 {
     mavlink_message_t msg;
     mavlink_status_t status;
-    float latitude,longtitude,altitude1,velocity;
+    float latitude,longtitude,altitude,velocity;
     while(Serial.available()){
         uint8_t c= Serial.read();
  
@@ -44,13 +44,13 @@ void MavLink_receive()
                     mavlink_msg_gps_raw_int_decode(&msg, &packet);
                     LoRa.print("Lat:");delay(40);
                     latitude = packet.lat;
-                    LoRa.println(latitude);delay(500);
+                    LoRa.println(latitude);delay(600);
                     LoRa.print("Long:");delay(40);
                     longtitude = packet.lon;
                     LoRa.println(longtitude);delay(600);
                     LoRa.print("Alt:");delay(40);
-                    altitude1 = packet.alt;
-                    LoRa.println(altitude1);delay(500);
+                    altitude = packet.alt;
+                    LoRa.println(altitude1);delay(600);
                 }
             }
         }

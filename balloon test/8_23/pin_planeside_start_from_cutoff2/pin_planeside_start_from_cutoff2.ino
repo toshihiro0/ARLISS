@@ -18,9 +18,9 @@
 #define AUTO 4
 #define DEEPSTALL 5
 
-#define goal_latitude 35.6596325
-#define goal_longtitude 140.0737739
-#define goal_altitude 42.0
+#define goal_latitude 35.65857330
+#define goal_longtitude 140.07452490
+#define goal_altitude 43.000000
 #define difference_lat 111316.2056
 
 static const float difference_lon = cos(goal_latitude/180*M_PI)*M_PI*6378.137/180*1000;
@@ -67,16 +67,7 @@ void setup()
     for(i = 0;i < 300;++i){ //アーム
         PPM_Transmit(PPMMODE_Arm);
     }
-    while(digitalRead(deploy_judge_pin_INPUT1) == LOW){
-        PPM_Transmit(PPMMODE_MANUAL);
-    }//D10がGNDに挿さっている間はここで止まる
-    delay(500); //機軸伸び切り待ち
-    for(i = 3;i <= 9;++i){ //2秒間
-        PPMMODE_TRAINING[2] = i*100;
-        for(j = 0;j < 14;++j){
-            PPM_Transmit(PPMMODE_TRAINING); //7*14*20 = 1960で2秒間かけてプロペラ回転
-        }
-    }
+
     PPMMODE_TRAINING[2] = 0; //Throttleは0に戻す。
 }
 
@@ -93,20 +84,8 @@ void loop()
                 PPM_Transmit(PPMMODE_TRAINING);
             }
 
-            time_deploy2_start = millis();
             while(true){
-                time_deploy2_end = millis();
                 if(digitalRead(deploy_judge_pin_INPUT2) == HIGH){
-                    EEPROM.write(0,TRAINING); //再起動しても大丈夫なように、先に書き込んでおきたい
-                    plane_condition = TRAINING;
-                    break;
-                }else if((time_deploy2_end-time_deploy2_start) > 20000){
-                    for(i = 3;i <= 9;++i){
-                        PPMMODE_TRAINING[2] = i*100;
-                        for(j = 0;j < 14;++j){
-                            PPM_Transmit(PPMMODE_TRAINING); //7*14*20 = 1960で2秒間かけてプロペラ回転、強制的に落としたい。
-                        }
-                    }
                     EEPROM.write(0,TRAINING); //再起動しても大丈夫なように、先に書き込んでおきたい
                     plane_condition = TRAINING;
                     break;

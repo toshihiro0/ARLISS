@@ -5,7 +5,6 @@
 #define LoRa_rst 7 //LoRaのRstピン
 
 TinyGPSPlus gps;
-//SoftwareSerial GPS_UART(5,4); //RX,TX,GPS通信用
 SoftwareSerial LoRa(8,9);
 
 void setup()
@@ -16,7 +15,7 @@ void setup()
     digitalWrite(LoRa_rst,HIGH);
     Serial.begin(9600); //GPSとの通信
     LoRa.begin(19200); //Loraとの通信
-    delay(1200);
+    delay(2000);
 }
 
 void loop()

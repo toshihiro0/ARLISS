@@ -3,8 +3,8 @@
 const int SPI_CS_PIN = 10;
 BME280 sensor;
 
-static const float pressure_on_the_ground = 100478.000; //高度計算用の地上の気圧(Pa)
-static const float temperature_on_the_ground = 25.30; //高度計算用の地上の気温(℃)
+static const float pressure_on_the_ground = 101058.02; //高度計算用の地上の気圧(Pa)
+static const float temperature_on_the_ground = 28.68; //高度計算用の地上の気温(℃)
 static const float temperature_correction = 273.15;
 
 void setup()
@@ -33,6 +33,10 @@ void loop()
     height = (1-pow(pressure/pressure_on_the_ground,0.19035714))/0.0065*(temperature_on_the_ground+temperature_correction);
     Serial.print("Height: ");
     Serial.print(height);
+    Serial.println(" m");
+
+    Serial.print("Altitude: ");
+    Serial.print(sensor.readFloatAltitudeMeters(), 0);
     Serial.println(" m");
 
     delay(1000);

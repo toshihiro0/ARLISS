@@ -40,6 +40,8 @@ int PPMMODE_STABILIZE[8] = {500,500,0,500,425,500,500,0}; //300から徐々に�
 int PPMMODE_AUTO[8] = {500,500,0,500,815,500,500,0};
 int PPMMODE_DEEPSTALL[8] = {500,900,0,500,425,500,500,0}; //900側がエレベーター上げ
 
+long time1,time2;
+
 void setup()
 {
     pinMode(outpin,OUTPUT);
@@ -53,6 +55,7 @@ void setup()
 
     Serial.begin(57600); //Pixhawkとの通信
     request_datastream(); //データ吸出し
+    time1 = millis();
 }
 
 void loop()
@@ -152,17 +155,17 @@ void MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint() //使わない
                         altitude = packet.alt/1e3;
                         if(LoRa_send_Mode == 0){
                             LoRa.print("Lat:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_STABILIZE);}
-                            LoRa.println(latitude);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_STABILIZE);}
+                            LoRa.println(latitude);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_STABILIZE);}
                         }else if(LoRa_send_Mode == 1){
                             LoRa.print("Long:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_STABILIZE);}
-                            LoRa.println(longtitude);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_STABILIZE);}
+                            LoRa.println(longtitude);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_STABILIZE);}
                         }else if(LoRa_send_Mode == 2){
                             LoRa.print("Alt:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_STABILIZE);}
-                            LoRa.println(altitude);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_STABILIZE);}
+                            LoRa.println(altitude);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_STABILIZE);}
                         }else if(LoRa_send_Mode == 3){
                             distance = calculate_distance(latitude,longtitude);
-                            LoRa.print("Distance:");for(i = 0;i < 5;++i){PPM_Transmit(PPMMODE_STABILIZE);}
-                            LoRa.println(distance);for(i = 0;i < 25;++i){PPM_Transmit(PPMMODE_STABILIZE);}
+                            LoRa.print("Distance:");for(i = 0;i < 2;++i){PPM_Transmit(PPMMODE_STABILIZE);}
+                            LoRa.println(distance);for(i = 0;i < 30;++i){PPM_Transmit(PPMMODE_STABILIZE);}
                         }
                         ++LoRa_send_Mode;
                         if(LoRa_send_Mode == 4){
@@ -173,6 +176,13 @@ void MavLink_receive_GPS_and_send_with_LoRa_and_detect_waypoint() //使わない
                 }
             }
         }
+        time2 = millis();
+        if((time2-time1) > 30000){
+            while(true){
+                PPM_Transmit(PPMMODE_AUTO);
+            }
+        }
+        PPM_Transmit(PPMMODE_STABILIZE);
     }
 }
 

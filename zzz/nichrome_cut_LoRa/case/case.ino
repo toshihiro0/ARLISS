@@ -13,6 +13,9 @@
 static const float temperature_on_the_ground = 23.66; //高度計算用の地上の気温(℃)
 static const float temperature_correction = 273.15;
 
+unsigned long time1;
+unsigned long time2;
+
 SoftwareSerial LoRa(8,9);
 
 BME280 air_pressure_sensor; //BME280
@@ -32,38 +35,42 @@ void setup()
     air_pressure_sensor.beginSPI(SPI_CS_PIN); //気圧センサとのSPI通信
     LoRa.begin(19200); //LoRaとの通信
     delay(2000); //LoRaの起動待ち
+    nichromecut1();
 }
 
 void loop()
 {
     int i;
     float height;
+    time1 = millis();
     while(true){
         char buf[128];
         LoRa_recv(buf);
-        LoRa.print("return\r");
-        delay(400);
-        if(strstr(buf,"measure")!= NULL){
-            height = height_judge();
-            for(i = 0;i < 4;++i){
-                EEPROM.write(i,0); //putのために中身をClearしておく
-            }
-            EEPROM.put(0,height); //EEPROMに保存
-            LoRa.print(height);delay(100);
-            LoRa.print("\r");delay(100);
-        }else if(strstr(buf,"cutoff1")!= NULL){
-            LoRa.print("Yes,sir\r");
-            nichromcut1();
-            delay(100);
-        }else if(strstr(buf,"cutoff2")!= NULL){
-            LoRa.print("Yes,sir\r");
-            nichromcut2();
-            delay(100);
-        }else if(strstr(buf,"cutoffall")!= NULL){
-            LoRa.print("Yes,sir\r");
-            nichromcutall();
-            delay(100);
+        if(strstr(buf,"cutoff")!= NULL){
+            digitalWrite(nichrome_pin_1,LOW);
+            nichrome\cut2();
+            break;
         }
+    }
+    LoRa.write("config\r");
+    delay(100);
+    digitalWrite(LoRa_rst,LOW);
+    delay(100);
+    digitalWrite(LoRa_rst,HIGH);
+    delay(2000);
+    LoRa.write("2\r");
+    delay(50);
+    LoRa.write("g 0\r");
+    delay(50);
+    LoRa.write("q 2\r");
+    delay(50);
+    LoRa.write("save\r");
+    delay(100);
+    LoRa.write("start\r");
+    delay(100);
+    while(true){
+        LoRa.write("hoge\r");
+        delay(100);
     }
 }
 
@@ -86,6 +93,11 @@ float height_judge()
 void LoRa_recv(char *buf)
 {
     while (true) {
+        time2 = millis();
+        if((time2-time1) > 10000){
+            strcpy(buf,"cutoff");
+            return;
+        }
         while (LoRa.available() > 0) {
             *buf++ = LoRa.read();
             if(*(buf-3) == 'O' && *(buf-2) == 'K' && *(buf-1) == '\r'){
@@ -98,27 +110,14 @@ void LoRa_recv(char *buf)
     }
 }
 
-void nichromcut1()
+void nichromecut1()
 {
     digitalWrite(nichrome_pin_1,HIGH);
-    delay(6000);
-    digitalWrite(nichrome_pin_1,LOW);
 }
 
-void nichromcut2()
+void nichromecut2()
 {
     digitalWrite(nichrome_pin_2,HIGH);
-    delay(60000);
-    digitalWrite(nichrome_pin_2,LOW);
-}
-
-void nichromcutall()
-{
-    digitalWrite(nichrome_pin_1,HIGH);
-    delay(6000);
-    digitalWrite(nichrome_pin_1,LOW);
-    delay(100);
-    digitalWrite(nichrome_pin_2,HIGH);
-    delay(6000);
+    delay(3000);
     digitalWrite(nichrome_pin_2,LOW);
 }
