@@ -3,8 +3,8 @@
 const int SPI_CS_PIN = 10;
 BME280 sensor;
 
-static const float pressure_on_the_ground = 101058.02; //高度計算用の地上の気圧(Pa)
-static const float temperature_on_the_ground = 28.68; //高度計算用の地上の気温(℃)
+static const float pressure_on_the_ground = 101301.21; //高度計算用の地上の気圧(Pa)
+static const float temperature_on_the_ground = 29.60; //高度計算用の地上の気温(℃)
 static const float temperature_correction = 273.15;
 
 void setup()
