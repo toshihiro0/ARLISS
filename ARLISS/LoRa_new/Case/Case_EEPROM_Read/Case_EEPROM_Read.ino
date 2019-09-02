@@ -34,6 +34,5 @@ void loop()
     EEPROM_Address += 4;
     EEPROM.get(EEPROM_Address,time_nichrome2_start);
     Serial.println(time_nichrome2_start);
-    EEPROM_Address += 4;
     while(true){}
 }

@@ -52,6 +52,6 @@ void loop()
 
     EEPROM.get(EEPROM_Address,DEEP_TIME);
     Serial.println(DEEP_TIME);
-    EEPROM_Address += 4;
+    
     while(true){}
 }
