@@ -13,7 +13,7 @@ void setup()
 
 void loop()
 {
-    Serial.write("hogehoge");
+    Serial.write("hogehoge\r");
     delay(500);
 
 }

@@ -21,9 +21,7 @@
 
 static const float airpressure_on_the_ground = 101058.02; //高度計算用の地上の気圧(Pa)
 static const float temperature_on_the_ground = 28.68; //高度計算用の地上の気温(℃)
-static const float release_height = 15.0; //切り離し高度(m)
-
-int EEPROM_Address = 2;
+static const float release_height = 300.0; //切り離し高度(m)
 
 unsigned long time_cds;
 unsigned long time_height;
@@ -34,8 +32,6 @@ unsigned long time_nichromecut2_start;
 SoftwareSerial LoRa(LoRa_RX,LoRa_TX);
 BME280 air_pressure_sensor; //気圧センサBME280
 TinyGPSPlus gps; //GPS
-
-float height = 20000.0;
 
 /*
 void cds(void); //cdsセンサーの明暗判定
@@ -59,24 +55,22 @@ void setup()
 
     EEPROM.write(0,0);
 
-    Serial.begin(9600); //GPSとの通信
-
     LoRa.begin(19200); //Loraとの通信
     if(EEPROM.read(1) == 0){ //EEPROMで初回起動かどうか調べる。
-        delay(60000); //60sしたら開始(ロケット発射前にCdsセルが勘違いするのを防ぐ。)
+        delay(1000); //60sしたら開始(ロケット発射前にCdsセルが勘違いするのを防ぐ。)
         EEPROM.write(1,1);
     }
 }
 
 void loop()
 {
+    float height;
     int case_condition = EEPROM.read(0);
     switch(case_condition){
         case Cds_mode:
             cds();
             time_cds = millis();
-            EEPROM.put(EEPROM_Address,time_cds);
-            EEPROM_Address += 4;
+            EEPROM.put(4,time_cds);
 
             pinMode(LoRa_sw,OUTPUT); 
             digitalWrite(LoRa_sw,HIGH);
@@ -90,12 +84,10 @@ void loop()
 
         case height_measure_mode:
             height = heightjudge(); //高度判定
-            EEPROM.put(EEPROM_Address,height);
-            EEPROM_Address += 4;
+            EEPROM.put(8,height);
 
             time_height = millis();
-            EEPROM.put(EEPROM_Address,time_height);
-            EEPROM_Address += 4;
+            EEPROM.put(12,time_height);
 
             EEPROM.write(0,nichrome_cut_mode);
             case_condition = nichrome_cut_mode;
@@ -103,7 +95,8 @@ void loop()
 
         case nichrome_cut_mode:
             nichromecut(); //ニクロム線カット
-            senttoLora(height);
+
+            senttoLora();
 
             EEPROM.write(0,GPS_mode);
             case_condition = GPS_mode;
@@ -149,8 +142,8 @@ void cds()
             continue; //また計測
         }
     }
-    EEPROM.put(EEPROM_Address,Voltage_measure_value);
-    EEPROM_Address += 2;
+    EEPROM.put(2,Voltage_measure_value);
+
     return;
 }
 
@@ -158,7 +151,7 @@ float heightjudge()
 {
     static const float temperature_correction = 273.15; //℃↔Kの変換
     float pressure;
-    float height;
+    float height = 20000.0;
     int i;
     unsigned long time_cds,now_time;
     for(i = 0;i < 5;++i){ //値の取り始めは値がおかしい。
@@ -207,7 +200,7 @@ void LoRa_recv(char *buf)
 {
     while(true){
         time_nichromecut1_end = millis();
-        if((time_nichromecut1_end-time_nichromecut1_start) > 15000){
+        if((time_nichromecut1_end-time_nichromecut1_start) > 15000){ //1回目は10秒流す想定。
             strcpy(buf,"cutoff");
             return;
         }
@@ -227,16 +220,13 @@ void nichromecut2()
 {
     digitalWrite(nichrome_pin_2,HIGH);
 
-    EEPROM.write(time_nichromecut1_start,EEPROM_Address);
-    EEPROM_Address += 4;
-    EEPROM.write(time_nichromecut1_end,EEPROM_Address);
-    EEPROM_Address += 4;
-    EEPROM.write(time_nichromecut2_start,EEPROM_Address);
-    EEPROM_Address += 4;
+    EEPROM.put(16,time_nichromecut1_start);
+    EEPROM.put(20,time_nichromecut1_end);
+    EEPROM.put(24,time_nichromecut2_start);
     
     LoRa_change_destination();
 
-    delay(12000);
+    delay(12000); //2回目は計15秒流す。
 
     digitalWrite(nichrome_pin_2,LOW);
     delay(100);
@@ -273,15 +263,18 @@ void LoRa_reset()
     return;
 }
 
-void senttoLora(float height)
+void senttoLora()
 {
+    float altitude;
+    EEPROM.get(8,altitude);
+
     LoRa.print("Case has released.\r\n");
     delay(500);
     LoRa.print("The pointed height has arrived.\r\n");
     delay(500);
     LoRa.print("Altitude: ");
     delay(500);
-    LoRa.println(height);
+    LoRa.println(altitude);
     delay(500);
     LoRa.print("The aircraft has released.\r\n");
     delay(500);
@@ -290,16 +283,28 @@ void senttoLora(float height)
 
 void gps_transmission()
 {
+    Serial.begin(9600); //GPSとの通信 
+
     while(true){
         while (Serial.available() > 0){
             char c = Serial.read();
             gps.encode(c);
             if(gps.location.isUpdated()){
-                LoRa.print("LAT=");delay(100);LoRa.println(gps.location.lat(),10);delay(100);delay(500);
-                LoRa.print("LONG=");delay(100);LoRa.println(gps.location.lng(),10);delay(100);delay(500);
-                LoRa.print("ALT=");delay(100);LoRa.println(gps.altitude.meters(),10);delay(100);delay(500);
+                int i;
+                float lat,lon,alt;
+                lat = gps.location.lat();
+                lon = gps.location.lng();
+                alt = gps.altitude.meters();
+                LoRa.print("LAT=");delay(100);LoRa.println(lat,10);delay(500);
+                LoRa.print("LONG=");delay(100);LoRa.println(lon,10);delay(500);
+                LoRa.print("ALT=");delay(100);LoRa.println(alt,10);delay(500);
+                for(i = 28;i < 40;++i){
+                    EEPROM.write(i,0);
+                }
+                EEPROM.put(28,lat);
+                EEPROM.put(32,lon);
+                EEPROM.put(36,alt);
             }
         }
-        delay(500);
     }
 }

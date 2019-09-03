@@ -11,12 +11,12 @@
 #define LoRa_RX 17
 #define LoRa_TX 19
 
-#define SLEEP 0
-#define TRAINING 1
-#define STABILIZE_NOSEUP 2
-#define STABILIZE 3
-#define AUTO 4
-#define DEEPSTALL 5
+#define SLEEP 1
+#define TRAINING 2
+#define STABILIZE_NOSEUP 3
+#define STABILIZE 4
+#define AUTO 5
+#define DEEPSTALL 6
 
 #define goal_latitude 35.6596325
 #define goal_longtitude 140.0737739
@@ -26,8 +26,6 @@
 static const float difference_lon = cos(goal_latitude/180*M_PI)*M_PI*6378.137/180*1000;
 
 SoftwareSerial LoRa(LoRa_RX,LoRa_TX); //LoRaと接続、PixhawkはSerialでつなぐ。
-
-int EEPROM_Address = 1;
 
 unsigned long time_auto_zero = 0;//オートが始まった最初の時刻を格納
 unsigned long time_auto = 0;//オートが始まってからの経過時間を格納
@@ -55,7 +53,7 @@ void setup()
     pinMode(deploy_judge_pin_INPUT1,INPUT_PULLUP);
     pinMode(deploy_judge_pin_INPUT2,INPUT_PULLUP);
 
-    if(EEPROM.read(2) != 0){ //ここが埋まってたら少なくとも2にTRAININGの記録が残っているはず。
+    if(EEPROM.read(1) != 0){ //ここが埋まってたら少なくとも1にSLEEPの記録が残ってるはず
         Serial.begin(57600); //Pixhawkとの通信
         request_datastream(); //データ吸出し
         pinMode(LoRa_sw,OUTPUT);  //LoRaの通信on
@@ -67,11 +65,14 @@ void setup()
         delay(2000);
         return;
     }
-    while(digitalRead(deploy_judge_pin_INPUT2) == HIGH){}
+
+    if(EEPROM.read(0) == 0){
+        deploy_judge_pin_check();
+        EEPROM.write(0,SLEEP); //ピン抜け1が終わった後に再起動すると困る、そのための1
+    }
     
     Serial.begin(57600); //Pixhawkとの通信
     request_datastream(); //データ吸出し
-    EEPROM.write(0,0);
 
     while(digitalRead(deploy_judge_pin_INPUT1) == LOW){ //機体収納時ここ。
         PPM_Transmit(PPMMODE_MANUAL);
@@ -96,8 +97,7 @@ void loop()
     int plane_condition = EEPROM.read(0); //再起動用に読み出し
     switch (plane_condition){
         case SLEEP: //溶断開始判定を受け取るまで
-            EEPROM.write(EEPROM_Address,SLEEP); //ログ残し用
-            ++EEPROM_Address;
+            EEPROM.write(1,SLEEP); //ログ残し用
 
             Sleep_time = millis();
             EEPROM.put(19,Sleep_time);
@@ -131,8 +131,7 @@ void loop()
         break;
 
         case TRAINING:
-            EEPROM.write(EEPROM_Address,TRAINING); //ログ残し用
-            ++EEPROM_Address;
+            EEPROM.write(2,TRAINING); //ログ残し用
 
             Training_time = millis();
             EEPROM.put(23,Training_time);
@@ -146,8 +145,7 @@ void loop()
         break;
 
         case STABILIZE_NOSEUP:
-            EEPROM.write(EEPROM_Address,2); //ログ残し用
-            ++EEPROM_Address;
+            EEPROM.write(3,STABILIZE_NOSEUP); //ログ残し用
 
             Stabilize_noseup_time = millis();
             EEPROM.put(27,Stabilize_noseup_time);
@@ -161,8 +159,7 @@ void loop()
         break;
 
         case STABILIZE:
-            EEPROM.write(EEPROM_Address,3); //ログ残し用
-            ++EEPROM_Address;
+            EEPROM.write(4,STABILIZE); //ログ残し用
 
             Stabilize_time = millis();
             EEPROM.put(31,Stabilize_time);
@@ -185,8 +182,7 @@ void loop()
         break;
 
         case AUTO://離陸判定後、仕様変更あり
-            EEPROM.write(EEPROM_Address,4); //ログ残し用
-            ++EEPROM_Address;
+            EEPROM.write(5,AUTO); //ログ残し用
 
             Auto_time = millis();
             EEPROM.put(35,Auto_time);
@@ -203,8 +199,7 @@ void loop()
         break;
 
         case DEEPSTALL:
-            EEPROM.write(EEPROM_Address,5); //ログ残し用
-            ++EEPROM_Address;
+            EEPROM.write(18,DEEPSTALL); //ログ残し用
 
             Deep_time = millis();
             EEPROM.put(39,Deep_time);
@@ -242,6 +237,23 @@ void loop()
     }
     return 90.0; //whileが取れなかった時に応じて、Stabilizeを続ける返り値を返してあげる。
 }*/
+
+void deploy_judge_pin_check()
+{
+    int i = 0;
+    while(true){
+        if(i == 400){
+            break;
+        }else if(digitalRead(deploy_judge_pin_INPUT1) == LOW && digitalRead(deploy_judge_pin_INPUT2) == LOW){
+            ++i;
+        }else{
+            i = 0;
+        }
+        delay(10);
+    }
+
+    return;
+}
 
 void request_datastream()
 {
@@ -385,12 +397,10 @@ void PPM_Transmit(int ch[8])
 
 void record_deep_stall_point(float latitude,float longtitude,float altitude)
 {
-    EEPROM.put(EEPROM_Address,latitude);
-    EEPROM_Address += 4;
-    EEPROM.put(EEPROM_Address,longtitude);
-    EEPROM_Address += 4;
-    EEPROM.put(EEPROM_Address,altitude);
-    EEPROM_Address += 4;
+    EEPROM.put(6,latitude);
+    EEPROM.put(10,longtitude);
+    EEPROM.put(14,altitude);
+
     return;
 }
 

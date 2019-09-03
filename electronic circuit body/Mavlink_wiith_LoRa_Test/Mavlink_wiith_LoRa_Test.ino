@@ -42,9 +42,9 @@ void MavLink_receive()
                 case MAVLINK_MSG_ID_ATTITUDE:{
                     mavlink_attitude_t packet;
                     mavlink_msg_attitude_decode(&msg, &packet);
-                    LoRa.print("roll:");delay(40);LoRa.println(packet.roll/M_PI*180.0);delay(300);
-                    LoRa.print("pitch:");delay(40);LoRa.println(packet.pitch/M_PI*180.0);delay(300);
-                    LoRa.print("yaw:");delay(40);LoRa.println(packet.yaw/M_PI*180.0);delay(300);
+                    LoRa.print("roll:");LoRa.println(packet.roll/M_PI*180.0);delay(500);
+                    LoRa.print("pitch:");LoRa.println(packet.pitch/M_PI*180.0);delay(500);
+                    LoRa.print("yaw:");LoRa.println(packet.yaw/M_PI*180.0);delay(500);
                 }break;
             }
         }

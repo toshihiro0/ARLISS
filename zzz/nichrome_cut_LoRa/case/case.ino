@@ -1,5 +1,6 @@
 #include <SoftwareSerial.h>
 #include <SparkFunBME280.h>
+#include <TinyGPS++.h>
 #include <EEPROM.h> //EEPROMに保存
 
 #define nichrome_pin_1 2
@@ -20,6 +21,8 @@ SoftwareSerial LoRa(8,9);
 
 BME280 air_pressure_sensor; //BME280
 
+TinyGPSPlus gps; //GPS
+
 void setup()
 {
     pinMode(nichrome_pin_1, OUTPUT);
@@ -35,20 +38,16 @@ void setup()
     air_pressure_sensor.beginSPI(SPI_CS_PIN); //気圧センサとのSPI通信
     LoRa.begin(19200); //LoRaとの通信
     delay(2000); //LoRaの起動待ち
-    nichromecut1();
 }
 
 void loop()
 {
     int i;
     float height;
-    time1 = millis();
     while(true){
         char buf[128];
         LoRa_recv(buf);
         if(strstr(buf,"cutoff")!= NULL){
-            digitalWrite(nichrome_pin_1,LOW);
-            nichrome\cut2();
             break;
         }
     }
@@ -68,10 +67,7 @@ void loop()
     delay(100);
     LoRa.write("start\r");
     delay(100);
-    while(true){
-        LoRa.write("hoge\r");
-        delay(100);
-    }
+    gps_transmission();
 }
 
 float height_judge()
@@ -93,11 +89,6 @@ float height_judge()
 void LoRa_recv(char *buf)
 {
     while (true) {
-        time2 = millis();
-        if((time2-time1) > 10000){
-            strcpy(buf,"cutoff");
-            return;
-        }
         while (LoRa.available() > 0) {
             *buf++ = LoRa.read();
             if(*(buf-3) == 'O' && *(buf-2) == 'K' && *(buf-1) == '\r'){
@@ -110,14 +101,30 @@ void LoRa_recv(char *buf)
     }
 }
 
-void nichromecut1()
+void gps_transmission()
 {
-    digitalWrite(nichrome_pin_1,HIGH);
-}
+    Serial.begin(9600); //GPSとの通信 
 
-void nichromecut2()
-{
-    digitalWrite(nichrome_pin_2,HIGH);
-    delay(3000);
-    digitalWrite(nichrome_pin_2,LOW);
+    while(true){
+        while (Serial.available() > 0){
+            char c = Serial.read();
+            gps.encode(c);
+            if(gps.location.isUpdated()){
+                int i;
+                float lat,lon,alt;
+                lat = gps.location.lat();
+                lon = gps.location.lng();
+                alt = gps.altitude.meters();
+                LoRa.print("LAT=");delay(100);LoRa.println(lat,10);delay(500);
+                LoRa.print("LONG=");delay(100);LoRa.println(lon,10);delay(500);
+                LoRa.print("ALT=");delay(100);LoRa.println(alt,10);delay(500);
+                for(i = 28;i < 40;++i){
+                    EEPROM.write(i,0);
+                }
+                EEPROM.put(28,lat);
+                EEPROM.put(32,lon);
+                EEPROM.put(36,alt);
+            }
+        }
+    }
 }
